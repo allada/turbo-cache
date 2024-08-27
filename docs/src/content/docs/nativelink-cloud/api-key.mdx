@@ -16,7 +16,6 @@ your `.github/workflows` folder with the following added to your `jobs` section:
 jobs:
   build-test:
     runs-on: ubuntu-22.04
-    environment: production
     steps:
     - name: Checkout
       uses: >- # v4.1.1
@@ -35,7 +34,6 @@ jobs:
           --bes_backend=${{ vars.NATIVELINK_COM_BES_URL }} \
           --bes_header=${{ secrets.NATIVELINK_COM_API_HEADER }} \
           --bes_results_url=${{ vars.NATIVELINK_COM_BES_RESULTS_URL }} \
-          --remote_header=x-nativelink-project=nativelink-ci \
           //...
 ```
 
@@ -55,15 +53,29 @@ ${{ secrets.YourSecretKeyName }}
 :::note
 If your repository uses forks for pull requests (PRs), note that the secrets
 context isn't accessible from PRs originating from forks. To address this,
-we introduced Read-Only keys.
+we introduced read-only keys.
 :::
 
-Read-Only keys can be used for PRs and stored in the vars context. For
-merge-to-main actions, use a Read/Write key stored in the secrets context.
+For PRs we recommend checking in a read-only key, here's an example from our GitHub Action below:
 
-## Read Only keys
+:::note
+You can create a read-only key in the settings page of the NativeLink Cloud app.
+:::
 
-For Read Only API Keys you need to set these two flags:
+```yaml
+bazel test \
+  ...
+  --remote_header=x-nativelink-api-key=${{ github.ref == 'refs/heads/main' && secrets.NATIVELINK_COM_API_HEADER || 'YOUR_HARDCODED_READ_ONLY_KEY_HERE' }} \
+  ...
+  ${{ github.ref != 'refs/heads/main' && '--nogenerate_json_trace_profile --remote_upload_local_results=false \' || '' }}
+  //...
+```
+
+For merge-to-main actions, use a Read/Write key stored in the secrets context.
+
+## Read-Only keys
+
+For read-only API keys you need to set these two flags:
 
 ```bash
 --nogenerate_json_trace_profile
