@@ -1,39 +1,28 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "organizeImports": {
-    "enabled": true,
-    "ignore": [".astro", ".wrangler", "dist", "node_modules"]
-  },
   "javascript": {
     "globals": ["Bun"]
+  },
+  "files": {
+    "ignore": ["*.astro", "dist", "node_modules"]
+  },
+  "organizeImports": {
+    "enabled": true
   },
   "linter": {
     "enabled": true,
     "rules": {
       "all": true,
       "style": {
-        "useNamingConvention": "off"
+        "useNamingConvention": "off",
+        "noDefaultExport": "off"
       }
-    },
-    "ignore": [
-      ".astro",
-      ".wrangler",
-      "dist",
-      "node_modules",
-      "src/components/PageFrame.astro"
-    ]
+    }
   },
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
     "indentStyle": "space",
-    "lineWidth": 80,
-    "ignore": [
-      ".astro",
-      ".wrangler",
-      "dist",
-      "node_modules",
-      "src/components/PageFrame.astro"
-    ]
+    "lineWidth": 80
   }
 }

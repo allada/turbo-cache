@@ -77,11 +77,11 @@
 
         llvmPackages = pkgs.llvmPackages_18;
 
-        customStdenv = pkgs.callPackage ./tools/llvmStdenv.nix {inherit llvmPackages;};
+        customStdenv = pkgs.callPackage ./tools/toolchains/llvmStdenv.nix {inherit llvmPackages;};
 
         # TODO(aaronmondal): This doesn't work with rules_rust yet.
         # Tracked in https://github.com/TraceMachina/nativelink/issues/477.
-        customClang = pkgs.callPackage ./tools/customClang.nix {stdenv = customStdenv;};
+        customClang = pkgs.callPackage ./tools/toolchains/customClang.nix {stdenv = customStdenv;};
 
         nixSystemToRustTriple = nixSystem:
           {
@@ -212,15 +212,18 @@
             cargoExtraArgs = "--features enable_tokio_console";
           });
 
-        publish-ghcr = pkgs.callPackage ./tools/publish-ghcr.nix {};
-
-        local-image-test = pkgs.callPackage ./tools/local-image-test.nix {};
-
-        nativelink-is-executable-test = pkgs.callPackage ./tools/nativelink-is-executable-test.nix {inherit nativelink;};
+        # Tests
+        local-image-test = pkgs.callPackage ./tools/test/local-image.nix {};
+        nativelink-is-executable-test = pkgs.callPackage ./tools/test/nativelink-is-executable.nix {inherit nativelink;};
 
         rbe-configs-gen = pkgs.callPackage ./local-remote-execution/rbe-configs-gen.nix {};
+        generate-toolchains = pkgs.callPackage ./tools/toolchains/generate.nix {inherit rbe-configs-gen;};
 
-        generate-toolchains = pkgs.callPackage ./tools/generate-toolchains.nix {inherit rbe-configs-gen;};
+        buck2-toolchain = import ./tools/buildsystem/buck2.nix {
+          inherit pkgs;
+          inherit buildImage;
+          inherit self;
+        };
 
         native-cli = pkgs.callPackage ./native-cli/default.nix {};
 
@@ -229,108 +232,47 @@
         inherit (nix2container.packages.${system}.nix2container) pullImage;
         inherit (nix2container.packages.${system}.nix2container) buildImage;
 
+        # Images
+        publish-ghcr = pkgs.callPackage ./tools/images/publish-ghcr.nix {};
         # TODO(aaronmondal): Allow "crosscompiling" this image. At the moment
         #                    this would set a wrong container architecture. See:
         #                    https://github.com/nlewo/nix2container/issues/138.
-        nativelink-image = let
-          nativelinkForImage =
-            if pkgs.stdenv.isx86_64
-            then nativelink-x86_64-linux
-            else nativelink-aarch64-linux;
-        in
-          buildImage {
-            name = "nativelink";
-            copyToRoot = [
-              (pkgs.buildEnv {
-                name = "nativelink-buildEnv";
-                paths = [nativelinkForImage];
-                pathsToLink = ["/bin"];
-              })
-            ];
-            config = {
-              Entrypoint = [(pkgs.lib.getExe' nativelinkForImage "nativelink")];
-              Labels = {
-                "org.opencontainers.image.description" = "An RBE compatible, high-performance cache and remote executor.";
-                "org.opencontainers.image.documentation" = "https://github.com/TraceMachina/nativelink";
-                "org.opencontainers.image.licenses" = "Apache-2.0";
-                "org.opencontainers.image.revision" = "${self.rev or self.dirtyRev or "dirty"}";
-                "org.opencontainers.image.source" = "https://github.com/TraceMachina/nativelink";
-                "org.opencontainers.image.title" = "NativeLink";
-                "org.opencontainers.image.vendor" = "Trace Machina, Inc.";
-              };
-            };
-          };
+        nativelink-image = import ./tools/images/nativelink.nix {
+          inherit self;
+          inherit buildImage;
+          inherit pkgs;
+          inherit nativelink-x86_64-linux;
+          inherit nativelink-aarch64-linux;
+        };
 
-        nativelink-worker-init = pkgs.callPackage ./tools/nativelink-worker-init.nix {inherit buildImage self nativelink-image;};
+        siso-chromium = import ./tools/images/siso-chromium.nix {
+          inherit buildImage;
+          inherit pullImage;
+        };
 
+        toolchain-drake = import ./tools/images/toolchain-drake.nix {
+          inherit buildImage;
+          inherit pullImage;
+        };
+
+        nativelink-worker-init = pkgs.callPackage ./tools/nativelink/worker-init.nix {inherit buildImage self nativelink-image;};
+        createWorker = pkgs.callPackage ./tools/nativelink/create-worker.nix {inherit buildImage self;};
+
+        # LRE
         rbe-autogen = pkgs.callPackage ./local-remote-execution/rbe-autogen.nix {
           inherit buildImage;
           stdenv = customStdenv;
         };
-        createWorker = pkgs.callPackage ./tools/create-worker.nix {inherit buildImage self;};
-        buck2-toolchain = let
-          buck2-nightly-rust-version = "2024-04-28";
-          buck2-nightly-rust = pkgs.rust-bin.nightly.${buck2-nightly-rust-version};
-          buck2-rust = buck2-nightly-rust.default.override {extensions = ["rust-src"];};
-        in
-          pkgs.callPackage ./tools/create-worker-experimental.nix {
-            inherit buildImage self;
-            imageName = "buck2-toolchain";
-            packagesForImage = [
-              pkgs.coreutils
-              pkgs.bash
-              pkgs.go
-              pkgs.diffutils
-              pkgs.gnutar
-              pkgs.gzip
-              pkgs.python3Full
-              pkgs.unzip
-              pkgs.zstd
-              pkgs.cargo-bloat
-              pkgs.mold-wrapped
-              pkgs.reindeer
-              pkgs.lld_16
-              pkgs.clang_16
-              buck2-rust
-            ];
-          };
-        siso-chromium = buildImage {
-          name = "siso-chromium";
-          fromImage = pullImage {
-            imageName = "gcr.io/chops-public-images-prod/rbe/siso-chromium/linux";
-            imageDigest = "sha256:26de99218a1a8b527d4840490bcbf1690ee0b55c84316300b60776e6b3a03fe1";
-            sha256 = "sha256-v2wctuZStb6eexcmJdkxKcGHjRk2LuZwyJvi/BerMyw=";
-            tlsVerify = true;
-            arch = "amd64";
-            os = "linux";
-          };
-        };
+
         lre-cc = pkgs.callPackage ./local-remote-execution/lre-cc.nix {
           inherit customClang buildImage;
           stdenv = customStdenv;
         };
-        toolchain-drake = buildImage {
-          name = "toolchain-drake";
-          # imageDigest and sha256 are generated by toolchain-drake.sh for non-reproducible builds.
-          fromImage = pullImage {
-            imageName = "localhost:5001/toolchain-drake";
-            imageDigest = ""; # DO NOT COMMIT DRAKE IMAGE_DIGEST VALUE
-            sha256 = ""; # DO NOT COMMIT DRAKE SHA256 VALUE
-            tlsVerify = false;
-            arch = "amd64";
-            os = "linux";
-          };
-        };
       in rec {
         _module.args.pkgs = let
-          nixpkgs-patched = (import self.inputs.nixpkgs {inherit system;}).applyPatches {
-            name = "nixpkgs-patched";
-            src = self.inputs.nixpkgs;
-            patches = [
-              ./tools/nixpkgs_link_libunwind_and_libcxx.diff
-              ./tools/nixpkgs_disable_ratehammering_pulumi_tests.diff
-              ./tools/nixpkgs_playwright.diff
-            ];
+          nixpkgs-patched = import ./tools/patches/apply.nix {
+            inherit self;
+            inherit system;
           };
         in
           import nixpkgs-patched {
@@ -410,70 +352,21 @@
             else lre-cc.meta.Env;
           prefix = "lre";
         };
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = let
-            bazel = pkgs.writeShellScriptBin "bazel" ''
-              unset TMPDIR TMP
-              exec ${pkgs.bazelisk}/bin/bazelisk "$@"
-            '';
-          in
-            [
-              # Development tooling goes here.
-              bazel
-              stable-rust-native.default
-              pkgs.pre-commit
-              pkgs.awscli2
-              pkgs.skopeo
-              pkgs.dive
-              pkgs.cosign
-              pkgs.kubectl
-              pkgs.kubernetes-helm
-              pkgs.cilium-cli
-              pkgs.vale
-              pkgs.trivy
-              pkgs.docker-client
-              pkgs.kind
-              pkgs.tektoncd-cli
-              pkgs.pulumi
-              pkgs.pulumiPackages.pulumi-language-go
-              pkgs.go
-              pkgs.kustomize
-              pkgs.nodePackages.pnpm
 
-              # Additional tools from within our development environment.
-              local-image-test
-              generate-toolchains
-              customClang
-              native-cli
-              docs
-            ]
-            ++ pkgs.lib.optionals (!pkgs.stdenv.isDarwin) [
-              # The docs on Mac require a manual setup outside the flake.
-              pkgs.playwright-driver.browsers
-            ]
-            ++ maybeDarwinDeps;
-          shellHook =
-            ''
-              # Generate the .pre-commit-config.yaml symlink when entering the
-              # development shell.
-              ${config.pre-commit.installationScript}
-
-              # Generate lre.bazelrc which configures LRE toolchains when running
-              # in the nix environment.
-              ${config.local-remote-execution.installationScript}
-
-              # The Bazel and Cargo builds in nix require a Clang toolchain.
-              # TODO(aaronmondal): The Bazel build currently uses the
-              #                    irreproducible host C++ toolchain. Provide
-              #                    this toolchain via nix for bitwise identical
-              #                    binaries across machines.
-              export CC=clang
-            ''
-            + pkgs.lib.optionalString (!pkgs.stdenv.isDarwin) ''
-              export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-              export PLAYWRIGHT_NODEJS_PATH=${pkgs.nodePackages_latest.nodejs}
-            '';
+        devShells.default = import ./tools/shell/base.nix {
+          inherit config;
+          inherit stable-rust-native;
+          inherit pkgs;
+          inherit local-image-test;
+          inherit generate-toolchains;
+          inherit customClang;
+          inherit native-cli;
+          inherit docs;
+          inherit maybeDarwinDeps;
         };
+
+        # Example for another devShell called "test"
+        # devShells.test = import ./tools/shell/base.nix { inherit pkgs; };
       };
     }
     // {

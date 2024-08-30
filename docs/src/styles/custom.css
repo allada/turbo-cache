@@ -14,3 +14,7 @@ html[data-theme="dark"] .beoe-light {
     text-decoration: underline;
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}

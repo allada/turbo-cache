@@ -1,62 +1,54 @@
 {
-  "name": "docs",
+  "name": "nativelink-docs",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "metaphase": "cd .. && unset TMPDIR TMP; bazelisk build nativelink-config:docs_json && cd docs && bun scripts/metaphase_aot.ts",
+    "sync": "astro sync",
     "astro": "astro",
     "biome": "biome",
-    "transform": "bun scripts/md_to_mdx_aot.ts",
-    "build": "bun metaphase && bun transform && bun check && astro build",
+    "docs": "bun run docs.build && bun run docs.generate",
+    "docs.build": "cd .. && unset TMPDIR TMP; bazelisk build nativelink-config:docs_json && cd docs && bun run src/utils/metaphase_aot.ts",
+    "docs.generate": "bun run src/utils/md_to_mdx_aot.ts",
+    "build": "bun fix && astro build",
     "check": "biome ci . && astro check",
-    "check.format": "biome format .",
-    "check.lint": "biome check .",
     "dev": "astro dev",
-    "fix": "biome format --write . && biome check --write .",
-    "preview": "bun run build && wrangler pages dev ./dist"
+    "fix": "bun lint && bun format && bun sync",
+    "format": "biome format --write .",
+    "lint": "biome check --write --unsafe .",
+    "check.lint": "biome check .",
+    "preview": "bun run build && bun serve",
+    "serve": "deno run --allow-net --allow-read --allow-env ./dist/server/entry.mjs",
+    "deploy": "deployctl deploy --include=./dist --entrypoint=./dist/server/entry.mjs --save-config",
+    "staging": "bun setup && bun docs && bun run build && bun run deploy",
+    "prod": "bun setup && bun docs && bun run build && bun run deploy --prod",
+    "setup": "bun install && bun run deno install -Arf jsr:@deno/deployctl@1.12.0"
   },
   "dependencies": {
+    "@astrojs/check": "^0.7.0",
+    "@astrojs/deno": "5.0.1",
+    "@astrojs/markdown-remark": "^5.1.0",
     "@astrojs/partytown": "^2.1.1",
-    "@astrojs/starlight": "https://gitpkg.now.sh/aaronmondal/starlight/packages/starlight?ssr",
+    "@astrojs/sitemap": "^3.1.6",
+    "@astrojs/starlight": "^0.25.5",
     "@beoe/pan-zoom": "^0.0.3",
     "@beoe/rehype-mermaid": "^0.0.1",
-    "astro": "^4.10.3",
-    "playwright": "^1.44.1",
+    "@deno/astro-adapter": "^0.1.3",
+    "@tailwindcss/vite": "^4.0.0-alpha.19",
+    "astro": "^4.5.12",
     "rehype-mermaid": "^2.1.0",
-    "sharp": "^0.33.4",
-    "tailwindcss": "4.0.0-alpha.16"
+    "tailwindcss": "^4.0.0-alpha.19"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.7.0",
-    "@astrojs/cloudflare": "^10.4.1",
-    "@astrojs/markdown-remark": "^5.1.0",
-    "@astrojs/sitemap": "^3.1.6",
     "@bazel/bazelisk": "^1.19.0",
     "@biomejs/biome": "^1.8.1",
     "@lorenzo_lewis/starlight-utils": "^0.1.1",
-    "@playform/compress": "=0.0.12",
-    "@tailwindcss/vite": "4.0.0-alpha.16",
-    "@types/bun": "^1.1.4",
-    "@types/mdast": "^4.0.4",
-    "autoprefixer": "^10.4.19",
-    "bun": "^1.1.13",
-    "lightningcss": "^1.25.1",
-    "postcss": "^8.4.38",
+    "@types/bun": "latest",
     "rehype-autolink-headings": "^7.1.0",
     "remark": "^15.0.1",
-    "remark-mdx": "^3.0.1",
-    "remark-parse": "^11.0.0",
-    "remark-stringify": "^11.0.0",
-    "rollup-plugin-visualizer": "^5.12.0",
-    "typescript": "^5.4.5",
-    "unist-util-visit": "^5.0.0",
-    "wrangler": "^3.60.3"
+    "typescript": "^5.4.5"
   },
-  "trustedDependencies": [
-    "@biomejs/biome",
-    "@fortawesome/fontawesome-free",
-    "esbuild",
-    "sharp",
-    "workerd"
-  ]
+  "overrides": {
+    "playwright-core": "1.44.0"
+  },
+  "trustedDependencies": ["@biomejs/biome", "esbuild", "sharp"]
 }

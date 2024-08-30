@@ -1,5 +1,3 @@
-// biome-ignore lint/correctness/noNodejsModules: Always runs ahead of time.
-import { join } from "node:path";
 import { generateAstroContent } from "./metaphase";
 import type { Crate } from "./rustdoc_types";
 
@@ -8,12 +6,12 @@ export async function generateDocs(config: {
   outputPath: string;
 }) {
   try {
-    const crateDataPath = join(import.meta.dir, config.crateDataPath);
+    const crateDataPath = `${import.meta.dir}/${config.crateDataPath}`;
     const crateData: Crate = JSON.parse(await Bun.file(crateDataPath).text());
 
     const markdownContent = generateAstroContent(crateData);
 
-    const outputPath = join(import.meta.dir, config.outputPath);
+    const outputPath = `${import.meta.dir}/${config.outputPath}`;
     await Bun.write(outputPath, markdownContent);
 
     console.info(`Generated: ${outputPath}`);
@@ -26,7 +24,7 @@ export async function generateDocs(config: {
 if (import.meta.main) {
   await generateDocs({
     crateDataPath:
-      "../../bazel-bin/nativelink-config/docs_json.rustdoc/nativelink_config.json",
-    outputPath: "../src/content/docs/reference/nativelink-config.mdx",
+      "../../../bazel-bin/nativelink-config/docs_json.rustdoc/nativelink_config.json",
+    outputPath: "../content/docs/reference/nativelink-config.mdx",
   });
 }

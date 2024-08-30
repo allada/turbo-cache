@@ -1,0 +1,27 @@
+/* @import "tailwindcss"; */
+
+/* @theme {
+  --color-primaryColor: rgb(99, 102, 241);
+  --color-secondaryColor: rgb(161, 163, 247);
+  --color-primaryText: rgb(255, 255, 255);
+  --color-secondaryText: rgb(174, 178, 183);
+  --color-bgDark1: rgb(31, 32, 35);
+  --color-bgDark2: rgb(38, 39, 43);
+  --color-bgDark3: rgb(48, 49, 54);
+  --color-bgDark3Hover: rgb(55, 56, 62);
+  --color-bgDarkTransparent: rgba(31, 32, 35, 0.7);
+  --color-bgDarkTransparentDarker: rgba(0, 0, 0, 0.5);
+  --color-bgDarkTransparentLighter: rgba(48, 49, 54, 0.7);
+  --color-mainBorder: rgba(255, 255, 255, 0.15);
+  --color-mainBorderDarker: rgba(255, 255, 255, 0.07);
+  --color-quoteIconColor: rgb(178, 184, 205);
+
+  --font-family-Inter: 'Inter', sans-serif;
+
+  --screen-xs: 530px;
+  --screen-sm: 640px;
+  --screen-md: 768px;
+  --screen-lg: 1024px;
+  --screen-xl: 1280px;
+  --screen-2xl: 1536px;
+} */
