@@ -53,7 +53,7 @@ pub fn store_factory<'a>(
             StoreConfig::experimental_s3_store(config) => {
                 S3Store::new(config, SystemTime::now).await?
             }
-            StoreConfig::redis_store(config) => RedisStore::new(config)?,
+            StoreConfig::redis_store(config) => RedisStore::new(config).await?,
             StoreConfig::verify(config) => VerifyStore::new(
                 config,
                 store_factory(&config.backend, store_manager, None).await?,
