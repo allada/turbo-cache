@@ -8,12 +8,13 @@ import starlight from "@astrojs/starlight";
 import deno from "@deno/astro-adapter";
 import qwik from "@qwikdev/astro";
 import tailwindcss from "@tailwindcss/vite";
-// import partytown from "@astrojs/partytown";
 
 import { rehypeMermaid } from "@beoe/rehype-mermaid"; // "rehype-mermaid";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 import { starlightConfig } from "./starlight.conf";
+
+import partytown from "@astrojs/partytown";
 
 // https://astro.build/config
 export default defineConfig({
@@ -26,16 +27,15 @@ export default defineConfig({
     port: 8881,
     hostname: "localhost",
   }),
-  integrations: [
-    qwik({
-      include: ["**/components/qwik/**/*"],
-    }),
-    react({
-      include: ["**/components/react/*"],
-    }),
-    starlight(starlightConfig),
-    sitemap(),
-  ],
+  integrations: [qwik({
+    include: ["**/components/qwik/**/*"],
+  }), react({
+    include: ["**/components/react/*"],
+  }), starlight(starlightConfig), sitemap(), partytown({
+    config: {
+      forward: ["dataLayer.push"],
+    },
+  })],
   markdown: {
     rehypePlugins: [
       rehypeHeadingIds,
