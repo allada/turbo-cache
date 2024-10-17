@@ -129,7 +129,12 @@ impl ConnectionManager {
         // which defeats the object since there would be no backpressure
         // applied. Therefore it makes sense for this to be unbounded.
         let (connection_tx, connection_rx) = mpsc::unbounded_channel();
-        let endpoints = Vec::from_iter(endpoints.into_iter().map(|endpoint| (0, endpoint)));
+        let endpoints = Vec::from_iter(
+            endpoints
+                .into_iter()
+                .map(|endpoint| (0, endpoint))
+                .collect::<Vec<(_, _)>>(),
+        );
         if max_concurrent_requests == 0 {
             max_concurrent_requests = usize::MAX;
         }
