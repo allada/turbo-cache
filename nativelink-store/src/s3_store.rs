@@ -49,7 +49,6 @@ use nativelink_metric::MetricsComponent;
 use nativelink_util::buf_channel::{
     make_buf_channel_pair, DropCloserReadHalf, DropCloserWriteHalf,
 };
-use nativelink_util::fs;
 use nativelink_util::health_utils::{HealthStatus, HealthStatusIndicator};
 use nativelink_util::instant_wrapper::InstantWrapper;
 use nativelink_util::retry::{Retrier, RetryResult};
@@ -58,7 +57,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
-use tokio::sync::{mpsc, SemaphorePermit};
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tracing::{event, Level};
 
@@ -86,7 +85,6 @@ const DEFAULT_MULTIPART_MAX_CONCURRENT_UPLOADS: usize = 10;
 
 pub struct ConnectionWithPermit<T: Connection + AsyncRead + AsyncWrite + Unpin> {
     connection: T,
-    _permit: SemaphorePermit<'static>,
 }
 
 impl<T: Connection + AsyncRead + AsyncWrite + Unpin> Connection for ConnectionWithPermit<T> {
@@ -174,13 +172,9 @@ impl TlsConnector {
         req: &Uri,
     ) -> Result<ConnectionWithPermit<MaybeHttpsStream<TcpStream>>, Error> {
         let retry_stream_fn = unfold(self.connector.clone(), move |mut connector| async move {
-            let _permit = fs::get_permit().await.unwrap();
             match connector.call(req.clone()).await {
                 Ok(connection) => Some((
-                    RetryResult::Ok(ConnectionWithPermit {
-                        connection,
-                        _permit,
-                    }),
+                    RetryResult::Ok(ConnectionWithPermit { connection }),
                     connector,
                 )),
                 Err(e) => Some((
