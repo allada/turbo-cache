@@ -291,7 +291,7 @@ async fn drop_on_eof_completes_store_futures() -> Result<(), Error> {
             // Gets called in the slow store and we provide the data that's
             // sent to the upstream and the fast store.
             let bytes = length.unwrap_or(key.into_digest().size_bytes()) - offset;
-            let data = vec![0_u8; bytes as usize];
+            let data = vec![0_u8; usize::try_from(bytes).expect("Invalid length")];
             writer.send(Bytes::copy_from_slice(&data)).await?;
             writer.send_eof()
         }

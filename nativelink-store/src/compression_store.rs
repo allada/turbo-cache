@@ -180,7 +180,7 @@ impl UploadState {
                 usize::try_from(max_index_count)
                     .err_tip(|| "Could not convert max_index_count to usize")?
             ],
-            index_count: max_index_count as u32,
+            index_count: u32::try_from(max_index_count).expect("max_index_count is too large"),
             uncompressed_data_size: 0, // Updated later.
             config: header.config,
             version: CURRENT_STREAM_FORMAT_VERSION,
@@ -336,14 +336,18 @@ impl StoreDriver for CompressionStore {
                 }
 
                 // Now fill the size in our slice.
-                LittleEndian::write_u32(&mut compressed_data_buf[1..5], compressed_data_sz as u32);
+                LittleEndian::write_u32(
+                    &mut compressed_data_buf[1..5],
+                    u32::try_from(compressed_data_sz).expect("compressed_data_sz is too large"),
+                );
 
                 // Now send our chunk.
                 tx.send(compressed_data_buf.freeze())
                     .await
                     .err_tip(|| "Failed to write chunk to inner store in compression store")?;
 
-                index.position_from_prev_index = compressed_data_sz as u32;
+                index.position_from_prev_index =
+                    u32::try_from(compressed_data_sz).expect("Failed to convert to u32");
 
                 index_count += 1;
             }
@@ -361,7 +365,8 @@ impl StoreDriver for CompressionStore {
                     ..Default::default()
                 },
             );
-            output_state.footer.index_count = output_state.footer.indexes.len() as u32;
+            output_state.footer.index_count = u32::try_from(output_state.footer.indexes.len())
+                .expect("output_state.footer.indexes.len() is too large");
             output_state.footer.uncompressed_data_size = received_amt;
             {
                 // Write Footer.
@@ -374,7 +379,10 @@ impl StoreDriver for CompressionStore {
 
                 let mut footer = BytesMut::with_capacity(1 + 4 + serialized_footer.len());
                 footer.put_u8(FOOTER_FRAME_TYPE);
-                footer.put_u32_le(serialized_footer.len() as u32);
+                footer.put_u32_le(
+                    u32::try_from(serialized_footer.len())
+                        .expect("serialized_footer.len() is too large"),
+                );
                 footer.extend_from_slice(&serialized_footer);
 
                 tx.send(footer.freeze())
@@ -432,7 +440,9 @@ impl StoreDriver for CompressionStore {
                 };
                 let header_size = self.bincode_options.serialized_size(&EMPTY_HEADER).unwrap();
                 let chunk = rx
-                    .consume(Some(header_size as usize))
+                    .consume(Some(
+                        usize::try_from(header_size).expect("header_size is too large"),
+                    ))
                     .await
                     .err_tip(|| "Failed to read header in get_part compression store")?;
                 error_if!(
@@ -516,12 +526,15 @@ impl StoreDriver for CompressionStore {
                         uncompressed_data_sz + uncompressed_chunk_sz as u64;
                     if new_uncompressed_data_sz >= offset && remaining_bytes_to_send > 0 {
                         let start_pos = if offset <= uncompressed_data_sz {
-                            0
+                            0usize
                         } else {
-                            offset - uncompressed_data_sz
-                        } as usize;
+                            usize::try_from(offset - uncompressed_data_sz)
+                                .expect("offset - uncompressed_data_sz does not fit in usize")
+                        };
                         let end_pos = cmp::min(
-                            start_pos + remaining_bytes_to_send as usize,
+                            start_pos
+                                + usize::try_from(remaining_bytes_to_send)
+                                    .expect("Failed to convert to usize"),
                             uncompressed_chunk_sz,
                         );
                         if end_pos != start_pos {

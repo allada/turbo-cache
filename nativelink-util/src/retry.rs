@@ -120,6 +120,7 @@ impl Retrier {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn get_retry_config(&self) -> impl Iterator<Item = Duration> + '_ {
         ExponentialBackoff::new(Duration::from_millis(self.config.delay as u64))
             .map(|d| (self.jitter_fn)(d))

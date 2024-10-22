@@ -62,7 +62,9 @@ impl FastCDC {
             avg_size - offset
         };
         // Calculate the number of bits closest approximating our average.
+        #[allow(clippy::cast_possible_truncation)]
         let bits = (avg_size as f64).log2().round() as u32;
+
         Self {
             min_size,
             avg_size,

@@ -2357,7 +2357,10 @@ async fn ensure_worker_timeout_chooses_correct_values() -> Result<(), Box<dyn st
             Callbacks {
                 now_fn: test_monotonic_clock,
                 sleep_fn: |duration| {
-                    SENT_TIMEOUT.store(duration.as_millis() as i64, Ordering::Relaxed);
+                    SENT_TIMEOUT.store(
+                        i64::try_from(duration.as_millis()).expect("Failed to convert to i64"),
+                        Ordering::Relaxed,
+                    );
                     Box::pin(futures::future::pending())
                 },
             },
@@ -2393,7 +2396,7 @@ async fn ensure_worker_timeout_chooses_correct_values() -> Result<(), Box<dyn st
             .await?;
         assert_eq!(
             SENT_TIMEOUT.load(Ordering::Relaxed),
-            TASK_TIMEOUT.as_millis() as i64
+            i64::try_from(TASK_TIMEOUT.as_millis()).expect("Failed to convert to i64")
         );
     }
     {
@@ -2437,7 +2440,10 @@ async fn ensure_worker_timeout_chooses_correct_values() -> Result<(), Box<dyn st
             Callbacks {
                 now_fn: test_monotonic_clock,
                 sleep_fn: |duration| {
-                    SENT_TIMEOUT.store(duration.as_millis() as i64, Ordering::Relaxed);
+                    SENT_TIMEOUT.store(
+                        i64::try_from(duration.as_millis()).expect("Failed to convert to i64"),
+                        Ordering::Relaxed,
+                    );
                     Box::pin(futures::future::pending())
                 },
             },
@@ -2473,7 +2479,7 @@ async fn ensure_worker_timeout_chooses_correct_values() -> Result<(), Box<dyn st
             .await?;
         assert_eq!(
             SENT_TIMEOUT.load(Ordering::Relaxed),
-            MAX_TIMEOUT_DURATION.as_millis() as i64
+            i64::try_from(MAX_TIMEOUT_DURATION.as_millis()).expect("Failed to convert to i64")
         );
     }
     {
@@ -2517,7 +2523,10 @@ async fn ensure_worker_timeout_chooses_correct_values() -> Result<(), Box<dyn st
             Callbacks {
                 now_fn: test_monotonic_clock,
                 sleep_fn: |duration| {
-                    SENT_TIMEOUT.store(duration.as_millis() as i64, Ordering::Relaxed);
+                    SENT_TIMEOUT.store(
+                        i64::try_from(duration.as_millis()).expect("Failed to convert to i64"),
+                        Ordering::Relaxed,
+                    );
                     Box::pin(futures::future::pending())
                 },
             },

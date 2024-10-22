@@ -199,13 +199,20 @@ impl AwaitedActionSortKey {
     #[rustfmt::skip]
     const fn new(priority: i32, insert_timestamp: u32) -> Self {
         // Shift `new_priority` so [`i32::MIN`] is represented by zero.
-        // This makes it so any nagative values are positive, but
+        // This makes it so any negative values are positive, but
         // maintains ordering.
         const MIN_I32: i64 = (i32::MIN as i64).abs();
-        let priority = ((priority as i64 + MIN_I32) as u32).to_be_bytes();
+        let adjusted_priority = priority as i64 + MIN_I32;
 
-        // Invert our timestamp so the larger the timestamp the lower the number.
-        // This makes timestamp descending order instead of ascending.
+        // Manually check if `adjusted_priority` is within the bounds of `u32`
+        #[allow(clippy::cast_possible_truncation)]
+        let priority = if adjusted_priority >= u32::MIN as i64 && adjusted_priority <= u32::MAX as i64 {
+            (adjusted_priority as u32).to_be_bytes()
+        } else {
+            panic!("Failed to convert priority to u32");
+        };
+
+        // Invert the timestamp to make it descending order instead of ascending.
         let timestamp = (insert_timestamp ^ u32::MAX).to_be_bytes();
 
         AwaitedActionSortKey(u64::from_be_bytes([
@@ -215,10 +222,13 @@ impl AwaitedActionSortKey {
     }
 
     fn new_with_unique_key(priority: i32, insert_timestamp: &SystemTime) -> Self {
-        let timestamp = insert_timestamp
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as u32;
+        let timestamp = u32::try_from(
+            insert_timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        )
+        .expect("Failed to convert");
         Self::new(priority, timestamp)
     }
 

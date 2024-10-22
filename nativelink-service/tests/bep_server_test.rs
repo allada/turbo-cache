@@ -324,7 +324,9 @@ async fn publish_build_tool_event_stream_test() -> Result<(), Box<dyn std::error
             let (mut writer, mut reader) = make_buf_channel_pair();
             bep_store
                 .get_part(
-                    store_keys[sequence_number as usize - 1].clone(),
+                    store_keys
+                        [usize::try_from(sequence_number).expect("Failed to convert to usize") - 1]
+                        .clone(),
                     &mut writer,
                     0,
                     None,

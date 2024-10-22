@@ -102,7 +102,9 @@ impl MockRunningActionsManager {
             .expect("Could not recieve msg in mpsc")
         {
             RunningActionManagerCalls::CacheActionResult(req) => *req,
-            RunningActionManagerCalls::CreateAndAddAction(_) => panic!("Got incorrect call waiting for cache_action_result"),
+            RunningActionManagerCalls::CreateAndAddAction(_) => {
+                panic!("Got incorrect call waiting for cache_action_result")
+            }
         }
     }
 

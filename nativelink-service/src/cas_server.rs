@@ -277,7 +277,7 @@ impl CasServer {
             }
             if page_token_matched {
                 directories.push(directory);
-                if directories.len() as i32 == page_size {
+                if i32::try_from(directories.len()) == Ok(page_size) {
                     break;
                 }
             }

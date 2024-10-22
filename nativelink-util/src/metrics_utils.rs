@@ -138,9 +138,10 @@ impl<'a> AsyncTimer<'a> {
         if !metrics_enabled() {
             return;
         }
-        self.counter
-            .sum_func_duration_ns
-            .fetch_add(self.start.elapsed().as_nanos() as u64, Ordering::Acquire);
+        self.counter.sum_func_duration_ns.fetch_add(
+            u64::try_from(self.start.elapsed().as_nanos()).expect("Failed to convert to u64"),
+            Ordering::Acquire,
+        );
         self.counter.calls.fetch_add(1, Ordering::Acquire);
         self.counter.successes.fetch_add(1, Ordering::Acquire);
         // This causes DropCounter's drop to never be called.
@@ -263,8 +264,10 @@ impl AsyncCounterWrapper {
         // By default `drop_counter` will increment the drop counter when it goes out of scope.
         // This will ensure we don't increment the counter if we make it here with a zero cost.
         forget(drop_counter);
-        self.sum_func_duration_ns
-            .fetch_add(instant.elapsed().as_nanos() as u64, Ordering::Acquire);
+        self.sum_func_duration_ns.fetch_add(
+            u64::try_from(instant.elapsed().as_nanos()).expect("Failed to convert to u64"),
+            Ordering::Acquire,
+        );
         result
     }
 

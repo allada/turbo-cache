@@ -160,7 +160,7 @@ impl<'a> DigestStackStringifier<'a> {
             cursor
                 .write_fmt(format_args!("{}", self.digest.size_bytes()))
                 .err_tip(|| format!("Could not write size_bytes to buffer - {hex:?}",))?;
-            cursor.position() as usize
+            usize::try_from(cursor.position()).expect("Could not convert usize to u64")
         };
         // Convert the buffer into utf8 string.
         std::str::from_utf8(&self.buf[..len]).map_err(|e| {
@@ -468,7 +468,7 @@ pub fn encode_stream_proto<T: Message>(proto: &T) -> Result<Bytes, Box<dyn std::
         // Compressed-Flag -> 0 / 1 # encoded as 1 byte unsigned integer.
         buf.put_u8(0);
         // Message-Length -> {length of Message} # encoded as 4 byte unsigned integer (big endian).
-        buf.put_u32(len as u32);
+        buf.put_u32(u32::try_from(len).expect("Could not convert usize to u32"));
         // Message -> *{binary octet}.
     }
 

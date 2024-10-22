@@ -185,7 +185,7 @@ async fn simple_update_ac() -> Result<(), Error> {
     const CONTENT_LENGTH: usize = 50;
     let mut send_data = BytesMut::new();
     for i in 0..CONTENT_LENGTH {
-        send_data.put_u8(((i % 93) + 33) as u8); // Printable characters only.
+        send_data.put_u8(u8::try_from((i % 93) + 33).expect("Failed to convert to u8"));
     }
     let send_data = send_data.freeze();
 
@@ -428,8 +428,9 @@ async fn multipart_update_large_cas() -> Result<(), Error> {
 
     let mut send_data = Vec::with_capacity(AC_ENTRY_SIZE);
     for i in 0..send_data.capacity() {
-        send_data.push(((i * 3) % 256) as u8);
+        send_data.push(u8::try_from((i * 3) % 256).unwrap());
     }
+
     let digest = DigestInfo::try_new(VALID_HASH1, send_data.len())?;
 
     let mock_client = StaticReplayClient::new(vec![
@@ -539,7 +540,7 @@ async fn multipart_update_large_cas() -> Result<(), Error> {
         MockInstantWrapped::default,
     )?;
     store
-        .update_oneshot(digest, send_data.clone().into())
+        .update_oneshot(digest, send_data.into())
         .await
         .unwrap();
     mock_client.assert_requests_match(&[]);

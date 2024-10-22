@@ -250,8 +250,9 @@ where
     ) -> bool {
         let is_over_size = max_bytes != 0 && sum_store_size >= max_bytes;
 
-        let evict_older_than_seconds =
-            (self.anchor_time.elapsed().as_secs() as i32) - self.max_seconds;
+        let evict_older_than_seconds = (i32::try_from(self.anchor_time.elapsed().as_secs())
+            .expect("Failed to convert to i32"))
+            - self.max_seconds;
         let old_item_exists =
             self.max_seconds != 0 && peek_entry.seconds_since_anchor < evict_older_than_seconds;
 
@@ -347,7 +348,9 @@ where
                     if !should_evict && peek {
                         *result = Some(entry.data.len());
                     } else if !should_evict && entry.data.touch().await {
-                        entry.seconds_since_anchor = self.anchor_time.elapsed().as_secs() as i32;
+                        entry.seconds_since_anchor =
+                            i32::try_from(self.anchor_time.elapsed().as_secs())
+                                .expect("Failed to convert to i32");
                         *result = Some(entry.data.len());
                     } else {
                         *result = None;
@@ -377,7 +380,8 @@ where
         let entry = state.lru.get_mut(key.borrow())?;
 
         if entry.data.touch().await {
-            entry.seconds_since_anchor = self.anchor_time.elapsed().as_secs() as i32;
+            entry.seconds_since_anchor = i32::try_from(self.anchor_time.elapsed().as_secs())
+                .expect("Failed to convert to i32");
             return Some(entry.data.clone());
         }
 
@@ -389,8 +393,12 @@ where
 
     /// Returns the replaced item if any.
     pub async fn insert(&self, key: K, data: T) -> Option<T> {
-        self.insert_with_time(key, data, self.anchor_time.elapsed().as_secs() as i32)
-            .await
+        self.insert_with_time(
+            key,
+            data,
+            i32::try_from(self.anchor_time.elapsed().as_secs()).expect("Failed to convert to i32"),
+        )
+        .await
     }
 
     /// Returns the replaced item if any.
@@ -411,8 +419,12 @@ where
             return Vec::new();
         }
         let state = &mut self.state.lock().await;
-        self.inner_insert_many(state, inserts, self.anchor_time.elapsed().as_secs() as i32)
-            .await
+        self.inner_insert_many(
+            state,
+            inserts,
+            i32::try_from(self.anchor_time.elapsed().as_secs()).expect("Failed to convert to i32"),
+        )
+        .await
     }
 
     async fn inner_insert_many(

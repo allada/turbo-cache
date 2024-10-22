@@ -435,7 +435,7 @@ async fn add_files_to_cache<Fe: FileEntry>(
             .insert_with_time(
                 digest,
                 Arc::new(file_entry),
-                time_since_anchor.as_secs() as i32,
+                i32::try_from(time_since_anchor.as_secs()).expect("Failed to convert i32"),
             )
             .await;
         Ok(())
