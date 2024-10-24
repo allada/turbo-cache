@@ -259,16 +259,12 @@ impl GrpcStore {
             .connection()
             .await
             .err_tip(|| "in read_internal")?;
-        let mut response = ByteStreamClient::new(channel)
+        let response = ByteStreamClient::new(channel)
             .read(Request::new(request))
             .await
             .err_tip(|| "in GrpcStore::read")?
             .into_inner();
-        let first_response = response
-            .message()
-            .await
-            .err_tip(|| "Fetching first chunk in GrpcStore::read()")?;
-        Ok(FirstStream::new(first_response, response))
+        Ok(FirstStream::new(response))
     }
 
     pub async fn read(

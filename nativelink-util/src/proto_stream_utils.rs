@@ -130,6 +130,13 @@ where
     }
 }
 
+#[derive(Debug)]
+enum FirstResponse {
+    NotSet,
+    NoResponse,
+    Response(ReadResponse),
+}
+
 /// This provides a buffer for the first response from GrpcStore.read in order
 /// to allow the first read to occur within the retry loop.  That means that if
 /// the connection establishes fine, but reading the first byte of the file
@@ -139,15 +146,15 @@ pub struct FirstStream {
     /// hence the nested Option).  This should be populated on creation and
     /// returned as the first result from the stream.  Subsequent reads from the
     /// stream will use the encapsulated stream.
-    first_response: Option<Option<ReadResponse>>,
+    first_response: FirstResponse,
     /// The stream to get responses from when first_response is None.
     stream: Streaming<ReadResponse>,
 }
 
 impl FirstStream {
-    pub fn new(first_response: Option<ReadResponse>, stream: Streaming<ReadResponse>) -> Self {
+    pub fn new(stream: Streaming<ReadResponse>) -> Self {
         Self {
-            first_response: Some(first_response),
+            first_response: FirstResponse::NotSet,
             stream,
         }
     }
@@ -160,10 +167,33 @@ impl Stream for FirstStream {
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if let Some(first_response) = self.first_response.take() {
-            return std::task::Poll::Ready(first_response.map(Ok));
+        match self.first_response {
+            FirstResponse::NotSet => {
+                // If it's not set, proceed to fetch from the stream
+                // and set the first_response accordingly
+                match Pin::new(&mut self.stream).poll_next(cx) {
+                    Poll::Ready(Some(Ok(resp))) => {
+                        self.first_response = FirstResponse::Response(resp.clone());
+                        Poll::Ready(Some(Ok(resp)))
+                    }
+                    Poll::Ready(Some(Err(status))) => {
+                        self.first_response = FirstResponse::NoResponse;
+                        Poll::Ready(Some(Err(status)))
+                    }
+                    Poll::Ready(None) => {
+                        self.first_response = FirstResponse::NoResponse;
+                        Poll::Ready(None)
+                    }
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            FirstResponse::NoResponse => Poll::Ready(None),
+            FirstResponse::Response(ref resp) => {
+                let response = resp.clone();
+                self.first_response = FirstResponse::NoResponse;
+                Poll::Ready(Some(Ok(response)))
+            }
         }
-        Pin::new(&mut self.stream).poll_next(cx)
     }
 }
 
