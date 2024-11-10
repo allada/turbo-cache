@@ -1,0 +1,69 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nativelink-controller
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nativelink-controller
+rules:
+- apiGroups: ["kube.rs"]
+  resources: ["nativelinks"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["kube.rs"]
+  resources: ["nativelinks/status"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: [""]  # Core API group
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]  # Added permissions for Deployments
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nativelink-controller
+subjects:
+- kind: ServiceAccount
+  name: nativelink-controller
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: nativelink-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nativelink-controller
+spec:
+  selector:
+    matchLabels:
+      app: nativelink-controller
+  template:
+    metadata:
+      labels:
+        app: nativelink-controller
+    spec:
+      serviceAccountName: nativelink-controller
+      containers:
+      - name: controller
+        image: localhost:5001/nativelink-controller:1fk6yr22dwjcj3kb1lxjhgk914i5a295
+        env:
+        - name: NATIVELINK_PATH
+          value: "/usr/local/bin/nativelink"
+        volumeMounts:
+        - name: nativelink-executable
+          mountPath: /usr/local/bin/nativelink
+        - name: temp
+          mountPath: /tmp
+      volumes:
+      - name: nativelink-executable
+        hostPath:
+          path: /path/to/nativelink # Update this with actual path
+      - name: temp
+        emptyDir: {}

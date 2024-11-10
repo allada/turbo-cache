@@ -35,10 +35,14 @@ enable_tokio_console = [
 nix = [
   "nativelink-worker/nix"
 ]
+crd = [
+  "nativelink-config/crd"
+]
 
 [dependencies]
 nativelink-error = { path = "nativelink-error" }
 nativelink-config = { path = "nativelink-config" }
+nativelink-controller = { path = "nativelink-controller" }
 nativelink-scheduler = { path = "nativelink-scheduler" }
 nativelink-service = { path = "nativelink-service" }
 nativelink-store = { path = "nativelink-store" }

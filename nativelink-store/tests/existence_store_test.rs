@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use mock_instant::thread_local::MockClock;
 use nativelink_config::stores::{
-    EvictionPolicy, ExistenceCacheStore as ExistenceCacheStoreConfig, StoreConfig,
+    EvictionPolicy, ExistenceCacheSpec, MemorySpec, NoopSpec, StoreRef,
 };
 use nativelink_error::{Error, ResultExt};
 use nativelink_macro::nativelink_test;
@@ -32,13 +32,11 @@ const VALID_HASH1: &str = "0123456789abcdef0000000000000000000100000000000001234
 #[nativelink_test]
 async fn simple_exist_cache_test() -> Result<(), Error> {
     const VALUE: &str = "123";
-    let config = ExistenceCacheStoreConfig {
-        backend: StoreConfig::noop, // Note: Not used.
+    let config = ExistenceCacheSpec {
+        backend: StoreRef::new("dummy", NoopSpec::default()),
         eviction_policy: Default::default(),
     };
-    let inner_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
-    ));
+    let inner_store = Store::new(MemoryStore::new(&MemorySpec::default()));
     let store = ExistenceCacheStore::new(&config, inner_store.clone());
 
     let digest = DigestInfo::try_new(VALID_HASH1, 3).unwrap();
@@ -72,12 +70,12 @@ async fn simple_exist_cache_test() -> Result<(), Error> {
 #[nativelink_test]
 async fn update_flags_existance_cache_test() -> Result<(), Error> {
     const VALUE: &str = "123";
-    let config = ExistenceCacheStoreConfig {
-        backend: StoreConfig::noop,
+    let config = ExistenceCacheSpec {
+        backend: StoreRef::new("dummy", NoopSpec::default()),
         eviction_policy: Default::default(),
     };
     let inner_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     let store = ExistenceCacheStore::new(&config, inner_store.clone());
 
@@ -97,12 +95,12 @@ async fn update_flags_existance_cache_test() -> Result<(), Error> {
 #[nativelink_test]
 async fn get_part_caches_if_exact_size_set() -> Result<(), Error> {
     const VALUE: &str = "123";
-    let config = ExistenceCacheStoreConfig {
-        backend: StoreConfig::noop,
+    let config = ExistenceCacheSpec {
+        backend: StoreRef::new("dummy", NoopSpec::default()),
         eviction_policy: Default::default(),
     };
     let inner_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     let digest = DigestInfo::try_new(VALID_HASH1, 3).unwrap();
     inner_store
@@ -127,15 +125,15 @@ async fn get_part_caches_if_exact_size_set() -> Result<(), Error> {
 #[nativelink_test]
 async fn ensure_has_requests_eventually_do_let_evictions_happen() -> Result<(), Error> {
     const VALUE: &str = "123";
-    let inner_store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let inner_store = MemoryStore::new(&nativelink_config::stores::MemorySpec::default());
     let digest = DigestInfo::try_new(VALID_HASH1, 3).unwrap();
     inner_store
         .update_oneshot(digest, VALUE.into())
         .await
         .err_tip(|| "Failed to update store")?;
     let store = ExistenceCacheStore::new_with_time(
-        &ExistenceCacheStoreConfig {
-            backend: StoreConfig::noop,
+        &ExistenceCacheSpec {
+            backend: StoreRef::new("dummy", NoopSpec::default()),
             eviction_policy: Some(EvictionPolicy {
                 max_seconds: 10,
                 ..Default::default()

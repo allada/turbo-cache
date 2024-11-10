@@ -46,7 +46,7 @@ pub struct RefStore {
 
 impl RefStore {
     pub fn new(
-        config: &nativelink_config::stores::RefStore,
+        config: &nativelink_config::stores::RefSpec,
         store_manager: Weak<StoreManager>,
     ) -> Arc<Self> {
         Arc::new(RefStore {

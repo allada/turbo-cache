@@ -1,0 +1,75 @@
+---
+apiVersion: kube.rs/v1alpha1
+kind: NativeLink
+metadata:
+  name: nativelink-worker
+  namespace: default
+spec:
+  image: localhost:5001/nativelink:c567im4v5y7c25g0xaicmpfapgbjfgii
+  replicas: 1
+  runtime:
+    args: []
+    env:
+      RUST_LOG: "info"
+  config:
+    stores:
+      - name: GRPC_LOCAL_STORE
+        grpc:
+          instance_name: main
+          endpoints:
+            - address: grpc://${CAS_ENDPOINT:-127.0.0.1}:50051
+          store_type: cas
+
+      - name: GRPC_LOCAL_AC_STORE
+        grpc:
+          instance_name: main
+          endpoints:
+            - address: grpc://${CAS_ENDPOINT:-127.0.0.1}:50051
+          store_type: ac
+
+      - name: WORKER_FAST_SLOW_STORE
+        fastSlow:
+          fast: fs-worker
+          slow: ref-worker
+
+      - name: fs-worker
+        filesystem:
+          content_path: ~/.cache/nativelink/data-worker-test/content_path-cas
+          temp_path: ~/.cache/nativelink/data-worker-test/tmp_path-cas
+          eviction_policy:
+            #  10gb.
+            max_bytes: 10000000000
+
+      - name: ref-worker
+        ref:
+          name: GRPC_LOCAL_STORE
+
+    workers:
+      - local:
+          worker_api_endpoint:
+            uri: grpc://${SCHEDULER_ENDPOINT:-127.0.0.1}:50061
+          cas_fast_slow_store: WORKER_FAST_SLOW_STORE
+          upload_action_result:
+            ac_store: GRPC_LOCAL_AC_STORE
+          work_directory: ~/.cache/nativelink/work
+          platform_properties:
+            cpu_count:
+              query_cmd: nproc
+            memory_kb:
+              values: ["500000"]
+            network_kbps:
+              values: ["100000"]
+            cpu_arch:
+              values: ["x86_64"]
+            OSFamily:
+              values: ["Linux"]
+            container-image:
+              values:
+                  # WARNING: Treat the string below as nothing more than a raw string
+                  # that is matched by the scheduler against the value specified in
+                  # the `exec_properties` of the corresponding platform at
+                  # `local-remote-execution/generated-cc/config/BUILD`.
+                - "${NATIVELINK_WORKER_PLATFORM:-undefined_platform}"
+    servers: []
+    global:
+      max_open_files: 524288

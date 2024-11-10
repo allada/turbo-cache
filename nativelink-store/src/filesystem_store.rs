@@ -536,14 +536,14 @@ pub struct FilesystemStore<Fe: FileEntry = FileEntryImpl> {
 
 impl<Fe: FileEntry> FilesystemStore<Fe> {
     pub async fn new(
-        config: &nativelink_config::stores::FilesystemStore,
+        config: &nativelink_config::stores::FilesystemSpec,
     ) -> Result<Arc<Self>, Error> {
         Self::new_with_timeout_and_rename_fn(config, sleep, |from, to| std::fs::rename(from, to))
             .await
     }
 
     pub async fn new_with_timeout_and_rename_fn(
-        config: &nativelink_config::stores::FilesystemStore,
+        config: &nativelink_config::stores::FilesystemSpec,
         sleep_fn: fn(Duration) -> Sleep,
         rename_fn: fn(&OsStr, &OsStr) -> Result<(), std::io::Error>,
     ) -> Result<Arc<Self>, Error> {

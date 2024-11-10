@@ -140,7 +140,7 @@ pub struct RedisStore {
 
 impl RedisStore {
     /// Create a new `RedisStore` from the given configuration.
-    pub fn new(mut config: nativelink_config::stores::RedisStore) -> Result<Arc<Self>, Error> {
+    pub fn new(mut config: nativelink_config::stores::RedisSpec) -> Result<Arc<Self>, Error> {
         if config.addresses.is_empty() {
             return Err(make_err!(
                 Code::InvalidArgument,

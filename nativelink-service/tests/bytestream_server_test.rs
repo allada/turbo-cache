@@ -25,6 +25,7 @@ use hyper_util::server::conn::auto;
 use hyper_util::service::TowerToHyperService;
 use maplit::hashmap;
 use nativelink_config::cas_server::ByteStreamConfig;
+use nativelink_config::stores::{MemorySpec, StoreRef};
 use nativelink_error::{make_err, Code, Error, ResultExt};
 use nativelink_macro::nativelink_test;
 use nativelink_proto::google::bytestream::byte_stream_client::ByteStreamClient;
@@ -60,9 +61,7 @@ async fn make_store_manager() -> Result<Arc<StoreManager>, Error> {
     store_manager.add_store(
         "main_cas",
         store_factory(
-            &nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
+            &StoreRef::new("main", MemorySpec::default()),
             &store_manager,
             None,
         )

@@ -35,7 +35,7 @@ pub struct SizePartitioningStore {
 
 impl SizePartitioningStore {
     pub fn new(
-        config: &nativelink_config::stores::SizePartitioningStore,
+        config: &nativelink_config::stores::SizePartitioningSpec,
         lower_store: Store,
         upper_store: Store,
     ) -> Arc<Self> {

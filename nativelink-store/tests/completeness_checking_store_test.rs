@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use nativelink_config::stores::MemoryStore as MemoryStoreConfig;
+use nativelink_config::stores::MemorySpec;
 use nativelink_error::Error;
 use nativelink_macro::nativelink_test;
 use nativelink_proto::build::bazel::remote::execution::v2::{
@@ -36,8 +36,8 @@ const STDOUT: DigestInfo = DigestInfo::new([5u8; 32], 0);
 const STDERR: DigestInfo = DigestInfo::new([6u8; 32], 0);
 
 async fn setup() -> Result<(Arc<CompletenessCheckingStore>, Arc<MemoryStore>, DigestInfo), Error> {
-    let backend_store = Store::new(MemoryStore::new(&MemoryStoreConfig::default()));
-    let cas_store = MemoryStore::new(&MemoryStoreConfig::default());
+    let backend_store = Store::new(MemoryStore::new(&MemorySpec::default()));
+    let cas_store = MemoryStore::new(&MemorySpec::default());
     let ac_store =
         CompletenessCheckingStore::new(backend_store.clone(), Store::new(cas_store.clone()));
 

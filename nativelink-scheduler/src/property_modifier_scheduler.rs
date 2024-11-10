@@ -37,7 +37,7 @@ pub struct PropertyModifierScheduler {
 
 impl PropertyModifierScheduler {
     pub fn new(
-        config: &nativelink_config::schedulers::PropertyModifierScheduler,
+        config: &nativelink_config::schedulers::PropertyModifierSpec,
         scheduler: Arc<dyn ClientStateManager>,
     ) -> Self {
         Self {

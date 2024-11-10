@@ -60,7 +60,7 @@ pub struct DedupStore {
 
 impl DedupStore {
     pub fn new(
-        config: &nativelink_config::stores::DedupStore,
+        config: &nativelink_config::stores::DedupSpec,
         index_store: Store,
         content_store: Store,
     ) -> Result<Arc<Self>, Error> {

@@ -15,7 +15,10 @@
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use nativelink_config::schedulers::{ExperimentalSimpleSchedulerBackend, SchedulerConfig};
+use nativelink_config::schedulers::{
+    ExperimentalSimpleSchedulerBackend, MemoryBackend, SchedulerConfig, SchedulerRef,
+    SchedulerSpec, SimpleSpec,
+};
 use nativelink_config::stores::EvictionPolicy;
 use nativelink_error::{make_input_err, Error, ResultExt};
 use nativelink_store::redis_store::RedisStore;
@@ -42,27 +45,29 @@ pub type SchedulerFactoryResults = (
 );
 
 pub fn scheduler_factory(
-    scheduler_type_cfg: &SchedulerConfig,
+    scheduler_type_cfg: &SchedulerRef,
     store_manager: &StoreManager,
 ) -> Result<SchedulerFactoryResults, Error> {
     inner_scheduler_factory(scheduler_type_cfg, store_manager)
 }
 
 fn inner_scheduler_factory(
-    scheduler_type_cfg: &SchedulerConfig,
+    scheduler_config: &SchedulerRef,
     store_manager: &StoreManager,
 ) -> Result<SchedulerFactoryResults, Error> {
-    let scheduler: SchedulerFactoryResults = match scheduler_type_cfg {
-        SchedulerConfig::simple(config) => {
-            simple_scheduler_factory(config, store_manager, SystemTime::now)?
+    let scheduler_cfg: SchedulerConfig = scheduler_config.clone().into();
+
+    let scheduler: SchedulerFactoryResults = match &scheduler_cfg.spec {
+        SchedulerSpec::Simple(spec) => {
+            simple_scheduler_factory(spec, store_manager, SystemTime::now)?
         }
-        SchedulerConfig::grpc(config) => (Some(Arc::new(GrpcScheduler::new(config)?)), None),
-        SchedulerConfig::cache_lookup(config) => {
+        SchedulerSpec::Grpc(spec) => (Some(Arc::new(GrpcScheduler::new(spec)?)), None),
+        SchedulerSpec::CacheLookup(spec) => {
             let ac_store = store_manager
-                .get_store(&config.ac_store)
-                .err_tip(|| format!("'ac_store': '{}' does not exist", config.ac_store))?;
+                .get_store(&spec.ac_store)
+                .err_tip(|| format!("'ac_store': '{}' does not exist", spec.ac_store))?;
             let (action_scheduler, worker_scheduler) =
-                inner_scheduler_factory(&config.scheduler, store_manager)
+                inner_scheduler_factory(&spec.scheduler, store_manager)
                     .err_tip(|| "In nested CacheLookupScheduler construction")?;
             let cache_lookup_scheduler = Arc::new(CacheLookupScheduler::new(
                 ac_store,
@@ -70,12 +75,12 @@ fn inner_scheduler_factory(
             )?);
             (Some(cache_lookup_scheduler), worker_scheduler)
         }
-        SchedulerConfig::property_modifier(config) => {
+        SchedulerSpec::PropertyModifier(spec) => {
             let (action_scheduler, worker_scheduler) =
-                inner_scheduler_factory(&config.scheduler, store_manager)
+                inner_scheduler_factory(&spec.scheduler, store_manager)
                     .err_tip(|| "In nested PropertyModifierScheduler construction")?;
             let property_modifier_scheduler = Arc::new(PropertyModifierScheduler::new(
-                config,
+                spec,
                 action_scheduler.err_tip(|| "Nested scheduler is not an action scheduler")?,
             ));
             (Some(property_modifier_scheduler), worker_scheduler)
@@ -86,24 +91,25 @@ fn inner_scheduler_factory(
 }
 
 fn simple_scheduler_factory(
-    config: &nativelink_config::schedulers::SimpleScheduler,
+    spec: &SimpleSpec,
     store_manager: &StoreManager,
     now_fn: fn() -> SystemTime,
 ) -> Result<SchedulerFactoryResults, Error> {
-    match config
+    match spec
         .experimental_backend
         .as_ref()
-        .unwrap_or(&ExperimentalSimpleSchedulerBackend::memory)
-    {
-        ExperimentalSimpleSchedulerBackend::memory => {
+        .unwrap_or(&ExperimentalSimpleSchedulerBackend::Memory(
+            MemoryBackend {},
+        )) {
+        ExperimentalSimpleSchedulerBackend::Memory(_) => {
             let task_change_notify = Arc::new(Notify::new());
             let awaited_action_db = memory_awaited_action_db_factory(
-                config.retain_completed_for_s,
+                spec.retain_completed_for_s,
                 &task_change_notify.clone(),
                 SystemTime::now,
             );
             let (action_scheduler, worker_scheduler) =
-                SimpleScheduler::new(config, awaited_action_db, task_change_notify);
+                SimpleScheduler::new(spec, awaited_action_db, task_change_notify);
             Ok((Some(action_scheduler), Some(worker_scheduler)))
         }
         ExperimentalSimpleSchedulerBackend::redis(redis_config) => {
@@ -133,7 +139,7 @@ fn simple_scheduler_factory(
             )
             .err_tip(|| "In state_manager_factory::redis_state_manager")?;
             let (action_scheduler, worker_scheduler) =
-                SimpleScheduler::new(config, awaited_action_db, task_change_notify);
+                SimpleScheduler::new(spec, awaited_action_db, task_change_notify);
             Ok((Some(action_scheduler), Some(worker_scheduler)))
         }
     }

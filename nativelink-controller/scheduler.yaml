@@ -1,0 +1,77 @@
+---
+apiVersion: kube.rs/v1alpha1
+kind: NativeLink
+metadata:
+  name: nativelink-sample
+  namespace: default
+spec:
+  image: localhost:5001/nativelink:c567im4v5y7c25g0xaicmpfapgbjfgii
+  replicas: 1
+  runtime:
+    args: []
+    env:
+      RUST_LOG: "info"
+  config:
+    stores:
+      - name: GRPC_LOCAL_STORE
+        grpc:
+          instance_name: main,
+          endpoints:
+            - address: grpc://${CAS_ENDPOINT:-127.0.0.1}:50051
+          store_type: cas
+      - name: GRPC_LOCAL_AC_STORE
+        grpc:
+          instance_name: main
+          endpoints:
+            - address: grpc://${CAS_ENDPOINT:-127.0.0.1}:50051"
+          store_type: ac
+    schedulers:
+      # TODO(adams): use the right scheduler because reclient doesn't use the
+      # cached results?
+      # TODO(adams): max_bytes_per_stream
+      - name: MAIN_SCHEDULER,
+        simple:
+          supported_platform_properties:
+            cpu_count: priority
+            memory_kb: priority
+            network_kbps: priority
+            disk_read_iops: priority
+            disk_read_bps: priority
+            disk_write_iops: priority
+            disk_write_bps: priority
+            shm_size: priority
+            gpu_count: priority
+            gpu_model: priority
+            cpu_vendor: priority
+            cpu_arch: priority
+            cpu_model: priority
+            kernel_version: priority
+            OSFamily: priority
+            container-image: priority
+    servers:
+      - listener:
+          http:
+            socket_address: 0.0.0.0:50052
+        services:
+          ac:
+            main:
+              ac_store: GRPC_LOCAL_AC_STORE
+          execution:
+            main:
+              cas_store: GRPC_LOCAL_STORE,
+              scheduler: MAIN_SCHEDULER,
+          capabilities:
+            main:
+              remote_execution:
+                scheduler: MAIN_SCHEDULER,
+      - listener:
+          http:
+            socket_address: 0.0.0.0:50061
+        services:
+          # Note: This should be served on a different port, because it has
+          # a different permission set than the other services.
+          # In other words, this service is a backend api. The ones above
+          # are a frontend api.
+          worker_api:
+            scheduler: MAIN_SCHEDULER,
+          health: {}

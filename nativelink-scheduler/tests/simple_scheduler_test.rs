@@ -160,7 +160,7 @@ async fn basic_add_action_with_one_worker_test() -> Result<(), Error> {
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -228,7 +228,7 @@ async fn client_does_not_receive_update_timeout() -> Result<(), Error> {
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             worker_timeout_s: WORKER_TIMEOUT_S,
             ..Default::default()
         },
@@ -291,7 +291,7 @@ async fn find_executing_action() -> Result<(), Error> {
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -368,7 +368,7 @@ async fn remove_worker_reschedules_multiple_running_job_test() -> Result<(), Err
     let worker_id2: WorkerId = WorkerId(Uuid::new_v4());
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             worker_timeout_s: WORKER_TIMEOUT_S,
             ..Default::default()
         },
@@ -546,7 +546,7 @@ async fn set_drain_worker_pauses_and_resumes_worker_test() -> Result<(), Error> 
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -630,7 +630,7 @@ async fn worker_should_not_queue_if_properties_dont_match_test() -> Result<(), E
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             supported_platform_properties: Some(prop_defs),
             ..Default::default()
         },
@@ -724,7 +724,7 @@ async fn cacheable_items_join_same_action_queued_test() -> Result<(), Error> {
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -825,7 +825,7 @@ async fn cacheable_items_join_same_action_queued_test() -> Result<(), Error> {
 async fn worker_disconnects_does_not_schedule_for_execution_test() -> Result<(), Error> {
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -985,7 +985,7 @@ async fn matching_engine_fails_sends_abort() -> Result<(), Error> {
         let (senders, awaited_action) = MockAwaitedAction::new();
 
         let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-            &nativelink_config::schedulers::SimpleScheduler::default(),
+            &nativelink_config::schedulers::SimpleSpec::default(),
             awaited_action,
             || async move {},
             task_change_notify,
@@ -1030,7 +1030,7 @@ async fn matching_engine_fails_sends_abort() -> Result<(), Error> {
         let (senders, awaited_action) = MockAwaitedAction::new();
 
         let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-            &nativelink_config::schedulers::SimpleScheduler::default(),
+            &nativelink_config::schedulers::SimpleSpec::default(),
             awaited_action,
             || async move {},
             task_change_notify,
@@ -1081,7 +1081,7 @@ async fn worker_timesout_reschedules_running_job_test() -> Result<(), Error> {
     let worker_id2: WorkerId = WorkerId(Uuid::new_v4());
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             worker_timeout_s: WORKER_TIMEOUT_S,
             ..Default::default()
         },
@@ -1206,7 +1206,7 @@ async fn update_action_sends_completed_result_to_client_test() -> Result<(), Err
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -1307,7 +1307,7 @@ async fn update_action_sends_completed_result_after_disconnect() -> Result<(), E
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -1425,7 +1425,7 @@ async fn update_action_with_wrong_worker_id_errors_test() -> Result<(), Error> {
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -1523,7 +1523,7 @@ async fn does_not_crash_if_operation_joined_then_relaunched() -> Result<(), Erro
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -1663,7 +1663,7 @@ async fn run_two_jobs_on_same_worker_with_platform_properties_restrictions() -> 
     supported_props.insert("prop1".to_string(), PropertyType::minimum);
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             supported_platform_properties: Some(supported_props),
             ..Default::default()
         },
@@ -1825,7 +1825,7 @@ async fn run_jobs_in_the_order_they_were_queued() -> Result<(), Error> {
     supported_props.insert("prop1".to_string(), PropertyType::minimum);
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             supported_platform_properties: Some(supported_props),
             ..Default::default()
         },
@@ -1892,7 +1892,7 @@ async fn worker_retries_on_internal_error_and_fails_test() -> Result<(), Error> 
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             max_job_retries: 1,
             ..Default::default()
         },
@@ -2044,7 +2044,7 @@ async fn ensure_scheduler_drops_inner_spawn() -> Result<(), Error> {
     // DropChecker.
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -2077,7 +2077,7 @@ async fn ensure_task_or_worker_change_notification_received_test() -> Result<(),
 
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler::default(),
+        &nativelink_config::schedulers::SimpleSpec::default(),
         memory_awaited_action_db_factory(
             0,
             &task_change_notify.clone(),
@@ -2149,7 +2149,7 @@ async fn ensure_task_or_worker_change_notification_received_test() -> Result<(),
 async fn client_reconnect_keeps_action_alive() -> Result<(), Error> {
     let task_change_notify = Arc::new(Notify::new());
     let (scheduler, _worker_scheduler) = SimpleScheduler::new_with_callback(
-        &nativelink_config::schedulers::SimpleScheduler {
+        &nativelink_config::schedulers::SimpleSpec {
             worker_timeout_s: WORKER_TIMEOUT_S,
             ..Default::default()
         },

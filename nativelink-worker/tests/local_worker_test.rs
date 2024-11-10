@@ -31,6 +31,7 @@ mod utils {
 
 use hyper::body::Frame;
 use nativelink_config::cas_server::{LocalWorkerConfig, WorkerProperty};
+use nativelink_config::stores::{MemorySpec, StoreRef};
 use nativelink_error::{make_err, make_input_err, Code, Error};
 use nativelink_macro::nativelink_test;
 use nativelink_proto::build::bazel::remote::execution::v2::platform::Property;
@@ -406,17 +407,13 @@ async fn simple_worker_start_action_test() -> Result<(), Box<dyn std::error::Err
 #[nativelink_test]
 async fn new_local_worker_creates_work_directory_test() -> Result<(), Box<dyn std::error::Error>> {
     let cas_store = Store::new(FastSlowStore::new(
-        &nativelink_config::stores::FastSlowStore {
+        &nativelink_config::stores::FastSlowSpec {
             // Note: These are not needed for this test, so we put dummy memory stores here.
-            fast: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            slow: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
+            fast: StoreRef::new("fast", MemorySpec::default()),
+            slow: StoreRef::new("slow", MemorySpec::default()),
         },
         Store::new(
-            <FilesystemStore>::new(&nativelink_config::stores::FilesystemStore {
+            <FilesystemStore>::new(&nativelink_config::stores::FilesystemSpec {
                 content_path: make_temp_path("content_path"),
                 temp_path: make_temp_path("temp_path"),
                 ..Default::default()
@@ -424,11 +421,11 @@ async fn new_local_worker_creates_work_directory_test() -> Result<(), Box<dyn st
             .await?,
         ),
         Store::new(MemoryStore::new(
-            &nativelink_config::stores::MemoryStore::default(),
+            &nativelink_config::stores::MemorySpec::default(),
         )),
     ));
     let ac_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     let work_directory = make_temp_path("foo");
     new_local_worker(
@@ -454,17 +451,13 @@ async fn new_local_worker_creates_work_directory_test() -> Result<(), Box<dyn st
 async fn new_local_worker_removes_work_directory_before_start_test(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let cas_store = Store::new(FastSlowStore::new(
-        &nativelink_config::stores::FastSlowStore {
+        &nativelink_config::stores::FastSlowSpec {
             // Note: These are not needed for this test, so we put dummy memory stores here.
-            fast: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            slow: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
+            fast: StoreRef::new("fast", MemorySpec::default()),
+            slow: StoreRef::new("slow", MemorySpec::default()),
         },
         Store::new(
-            <FilesystemStore>::new(&nativelink_config::stores::FilesystemStore {
+            <FilesystemStore>::new(&nativelink_config::stores::FilesystemSpec {
                 content_path: make_temp_path("content_path"),
                 temp_path: make_temp_path("temp_path"),
                 ..Default::default()
@@ -472,11 +465,11 @@ async fn new_local_worker_removes_work_directory_before_start_test(
             .await?,
         ),
         Store::new(MemoryStore::new(
-            &nativelink_config::stores::MemoryStore::default(),
+            &nativelink_config::stores::MemorySpec::default(),
         )),
     ));
     let ac_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     let work_directory = make_temp_path("foo");
     fs::create_dir_all(format!("{}/{}", work_directory, "another_dir")).await?;

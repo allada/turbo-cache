@@ -203,6 +203,14 @@
               cargoArtifacts = cargoArtifactsFor p;
             });
 
+        nativelinkControllerFor = p:
+          (craneLibFor p).buildPackage ((commonArgsFor p)
+            // {
+              pname = "nativelink-controller";
+              cargoExtraArgs = "--package=nativelink-controller";
+              cargoArtifacts = cargoArtifactsFor p;
+            });
+
         nativeTargetPkgs =
           if pkgs.system == "x86_64-linux"
           then pkgs.pkgsCross.musl64
@@ -224,6 +232,14 @@
             CARGO_PROFILE = "smol";
             cargoExtraArgs = "--features enable_tokio_console";
           });
+
+        # TODO(aaronmondal): Enable.
+        # nativelink-controller = nativelinkControllerFor nativeTargetPkgs;
+
+        # These two can be built by all build platforms. This is not true for
+        # darwin targets which are only buildable via native compilation.
+        nativelink-controller-aarch64-linux = nativelinkControllerFor pkgs.pkgsCross.aarch64-multiplatform-musl;
+        nativelink-controller-x86_64-linux = nativelinkControllerFor pkgs.pkgsCross.musl64;
 
         publish-ghcr = pkgs.callPackage ./tools/publish-ghcr.nix {};
 
@@ -274,6 +290,35 @@
                 "org.opencontainers.image.revision" = "${self.rev or self.dirtyRev or "dirty"}";
                 "org.opencontainers.image.source" = "https://github.com/TraceMachina/nativelink";
                 "org.opencontainers.image.title" = "NativeLink";
+                "org.opencontainers.image.vendor" = "Trace Machina, Inc.";
+              };
+            };
+          };
+
+        nativelink-controller-image = let
+          nativelinkControllerForImage =
+            if pkgs.stdenv.isx86_64
+            then nativelink-controller-x86_64-linux
+            else nativelink-controller-aarch64-linux;
+        in
+          buildImage {
+            name = "nativelink-controller";
+            copyToRoot = [
+              (pkgs.buildEnv {
+                name = "nativelink-buildEnv";
+                paths = [nativelinkControllerForImage];
+                pathsToLink = ["/bin"];
+              })
+            ];
+            config = {
+              Entrypoint = [(pkgs.lib.getExe' nativelinkControllerForImage "nativelink-controller")];
+              Labels = {
+                "org.opencontainers.image.description" = "Controller for NativeLink CRDs.";
+                "org.opencontainers.image.documentation" = "https://github.com/TraceMachina/nativelink";
+                "org.opencontainers.image.licenses" = "Apache-2.0";
+                "org.opencontainers.image.revision" = "${self.rev or self.dirtyRev or "dirty"}";
+                "org.opencontainers.image.source" = "https://github.com/TraceMachina/nativelink";
+                "org.opencontainers.image.title" = "NativeLink Controller";
                 "org.opencontainers.image.vendor" = "Trace Machina, Inc.";
               };
             };
@@ -415,6 +460,7 @@
               nativelink-aarch64-linux
               nativelink-debug
               nativelink-image
+              nativelink-controller-image
               nativelink-is-executable-test
               nativelink-worker-init
               nativelink-x86_64-linux
@@ -513,6 +559,8 @@
               pkgs.fluxcd
               pkgs.go
               pkgs.kustomize
+              pkgs.grpcurl
+              pkgs.kubectx
 
               ## Web
               pkgs.bun # got patched to the newest version (v.1.1.25)

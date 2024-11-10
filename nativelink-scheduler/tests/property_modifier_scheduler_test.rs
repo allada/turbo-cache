@@ -22,7 +22,9 @@ mod utils {
 }
 
 use futures::{join, StreamExt};
-use nativelink_config::schedulers::{PlatformPropertyAddition, PropertyModification};
+use nativelink_config::schedulers::{
+    PlatformPropertyAddition, PropertyModification, SchedulerRef, SimpleSpec,
+};
 use nativelink_error::Error;
 use nativelink_macro::nativelink_test;
 use nativelink_scheduler::property_modifier_scheduler::PropertyModifierScheduler;
@@ -42,11 +44,9 @@ struct TestContext {
 
 fn make_modifier_scheduler(modifications: Vec<PropertyModification>) -> TestContext {
     let mock_scheduler = Arc::new(MockActionScheduler::new());
-    let config = nativelink_config::schedulers::PropertyModifierScheduler {
+    let config = nativelink_config::schedulers::PropertyModifierSpec {
         modifications,
-        scheduler: Box::new(nativelink_config::schedulers::SchedulerConfig::simple(
-            nativelink_config::schedulers::SimpleScheduler::default(),
-        )),
+        scheduler: SchedulerRef::new("simple", SimpleSpec::default()),
     };
     let modifier_scheduler = PropertyModifierScheduler::new(&config, mock_scheduler.clone());
     TestContext {

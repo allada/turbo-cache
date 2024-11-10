@@ -182,13 +182,18 @@ async fn inner_main(
     {
         let mut health_registry_lock = health_registry_builder.lock().await;
 
-        for (name, store_cfg) in cfg.stores {
+        for store_cfg in cfg.stores {
+            let name = store_cfg.name.clone();
             let health_component_name = format!("stores/{name}");
             let mut health_register_store =
                 health_registry_lock.sub_builder(&health_component_name);
-            let store = store_factory(&store_cfg, &store_manager, Some(&mut health_register_store))
-                .await
-                .err_tip(|| format!("Failed to create store '{name}'"))?;
+            let store = store_factory(
+                &store_cfg.into(),
+                &store_manager,
+                Some(&mut health_register_store),
+            )
+            .await
+            .err_tip(|| format!("Failed to create store '{name}'"))?;
             store_manager.add_store(&name, store);
         }
     }
@@ -196,15 +201,16 @@ async fn inner_main(
     let mut action_schedulers = HashMap::new();
     let mut worker_schedulers = HashMap::new();
     if let Some(schedulers_cfg) = cfg.schedulers {
-        for (name, scheduler_cfg) in schedulers_cfg {
+        for scheduler_cfg in schedulers_cfg {
+            let name = scheduler_cfg.name.clone();
             let (maybe_action_scheduler, maybe_worker_scheduler) =
-                scheduler_factory(&scheduler_cfg, &store_manager)
+                scheduler_factory(&scheduler_cfg.into(), &store_manager)
                     .err_tip(|| format!("Failed to create scheduler '{name}'"))?;
             if let Some(action_scheduler) = maybe_action_scheduler {
                 action_schedulers.insert(name.clone(), action_scheduler.clone());
             }
             if let Some(worker_scheduler) = maybe_worker_scheduler {
-                worker_schedulers.insert(name.clone(), worker_scheduler.clone());
+                worker_schedulers.insert(name, worker_scheduler.clone());
             }
         }
     }

@@ -2,48 +2,51 @@
 // `~/.cache/nativelink`. When this location is mounted as a PersistentVolume
 // it persists the cache across restarts.
 {
-  "stores": {
-    "CAS_MAIN_STORE": {
-      "existence_cache": {
+  "stores": [
+    {
+      "name": "CAS_MAIN_STORE",
+      "existenceCache": {
         "backend": {
+          "name": "compression-store",
           "compression": {
             "compression_algorithm": {
               "lz4": {}
             },
             "backend": {
+              "name": "fs-cas",
               "filesystem": {
                 "content_path": "~/.cache/nativelink/content_path-cas",
                 "temp_path": "~/.cache/nativelink/tmp_path-cas",
                 "eviction_policy": {
-                  // 10gb.
-                  "max_bytes": 10000000000,
+                  "max_bytes": "10Gb"
                 }
               }
             }
           }
         }
       }
-    },
-    "AC_MAIN_STORE": {
-      "completeness_checking": {
+    }, {
+      "name": "AC_MAIN_STORE",
+      "completenessChecking": {
         "backend": {
+          "name": "fs-ac",
           "filesystem": {
             "content_path": "~/.cache/nativelink/content_path-ac",
             "temp_path": "~/.cache/nativelink/tmp_path-ac",
             "eviction_policy": {
-              // 500mb.
-              "max_bytes": 500000000,
+              "max_bytes": "500Mb",
             }
           }
         },
         "cas_store": {
-          "ref_store": {
+          "name": "ref-cas",
+          "ref": {
             "name": "CAS_MAIN_STORE"
           }
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {

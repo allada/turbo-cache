@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 use bincode::{DefaultOptions, Options};
 use bytes::Bytes;
+use nativelink_config::stores::{CompressionAlgorithm, CompressionSpec, MemorySpec, StoreRef};
 use nativelink_error::{make_err, Code, Error, ResultExt};
 use nativelink_macro::nativelink_test;
 use nativelink_store::compression_store::{
@@ -73,19 +74,15 @@ async fn simple_smoke_test() -> Result<(), Error> {
     const RAW_INPUT: &str = "123";
 
     let store = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     ..Default::default()
                 },
             ),
         },
-        Store::new(MemoryStore::new(
-            &nativelink_config::stores::MemoryStore::default(),
-        )),
+        Store::new(MemoryStore::new(&MemorySpec::default())),
     )
     .err_tip(|| "Failed to create compression store")?;
 
@@ -114,20 +111,16 @@ async fn partial_reads_test() -> Result<(), Error> {
     ];
 
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     block_size: 10,
                     ..Default::default()
                 },
             ),
         },
-        Store::new(MemoryStore::new(
-            &nativelink_config::stores::MemoryStore::default(),
-        )),
+        Store::new(MemoryStore::new(&MemorySpec::default())),
     )
     .err_tip(|| "Failed to create compression store")?;
     let store = Pin::new(&store_owned);
@@ -167,19 +160,15 @@ async fn partial_reads_test() -> Result<(), Error> {
 #[nativelink_test]
 async fn rand_5mb_smoke_test() -> Result<(), Error> {
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     ..Default::default()
                 },
             ),
         },
-        Store::new(MemoryStore::new(
-            &nativelink_config::stores::MemoryStore::default(),
-        )),
+        Store::new(MemoryStore::new(&MemorySpec::default())),
     )
     .err_tip(|| "Failed to create compression store")?;
     let store = Pin::new(&store_owned);
@@ -202,13 +191,11 @@ async fn rand_5mb_smoke_test() -> Result<(), Error> {
 
 #[nativelink_test]
 async fn sanity_check_zero_bytes_test() -> Result<(), Error> {
-    let inner_store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let inner_store = MemoryStore::new(&MemorySpec::default());
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     ..Default::default()
                 },
@@ -259,13 +246,11 @@ async fn check_header_test() -> Result<(), Error> {
     const MAX_SIZE_INPUT: u64 = 1024 * 1024; // 1MB.
     const RAW_INPUT: &str = "123";
 
-    let inner_store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let inner_store = MemoryStore::new(&MemorySpec::default());
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     block_size: BLOCK_SIZE,
                     ..Default::default()
@@ -347,13 +332,11 @@ async fn check_footer_test() -> Result<(), Error> {
     const BLOCK_SIZE: u32 = 32 * 1024;
     const EXPECTED_INDEXES: [u32; 7] = [32898, 32898, 32898, 32898, 140, 140, 140];
 
-    let inner_store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let inner_store = MemoryStore::new(&MemorySpec::default());
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     block_size: BLOCK_SIZE,
                     ..Default::default()
@@ -495,13 +478,11 @@ async fn get_part_is_zero_digest() -> Result<(), Error> {
 
     let digest = DigestInfo::new(Sha256::new().finalize().into(), 0);
 
-    let inner_store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let inner_store = MemoryStore::new(&MemorySpec::default());
     let store_owned = CompressionStore::new(
-        &nativelink_config::stores::CompressionStore {
-            backend: nativelink_config::stores::StoreConfig::memory(
-                nativelink_config::stores::MemoryStore::default(),
-            ),
-            compression_algorithm: nativelink_config::stores::CompressionAlgorithm::lz4(
+        &CompressionSpec {
+            backend: StoreRef::new("memory", MemorySpec::default()),
+            compression_algorithm: CompressionAlgorithm::lz4(
                 nativelink_config::stores::Lz4Config {
                     block_size: BLOCK_SIZE,
                     ..Default::default()

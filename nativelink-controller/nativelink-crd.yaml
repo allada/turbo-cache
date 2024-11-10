@@ -1,0 +1,1738 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: nativelinks.kube.rs
+spec:
+  group: kube.rs
+  names:
+    categories: []
+    kind: NativeLink
+    plural: nativelinks
+    shortNames: []
+    singular: nativelink
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Whether the process is running
+      jsonPath: '.status.running'
+      name: Running
+      type: boolean
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for NativeLinkSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              config:
+                description: The NativeLink server configuration
+                properties:
+                  global:
+                    description: Any global configurations that apply to all modules live here.
+                    nullable: true
+                    properties:
+                      default_digest_hash_function:
+                        description: |-
+                          Default hash function to use while uploading blobs to the CAS when not set by client.
+
+                          Default: ConfigDigestHashFunction::sha256
+                        enum:
+                        - sha256
+                        - blake3
+                        nullable: true
+                        type: string
+                      default_digest_size_health_check:
+                        default: 0
+                        description: |-
+                          Default digest size to use for health check when running diagnostics checks. Health checks are expected to use this size for filling a buffer that is used for creation of digest.
+
+                          Default: 1024*1024 (1MiB)
+                        format: uint
+                        minimum: 0.0
+                        type: integer
+                      disable_metrics:
+                        default: false
+                        description: |-
+                          This flag can be used to prevent metrics from being collected at runtime. Metrics are still able to be collected, but this flag prevents metrics that are collected at runtime (performance metrics) from being tallied. The overhead of collecting metrics is very low, so this flag should only be used if there is a very good reason to disable metrics. This flag can be forcibly set using the `NATIVELINK_DISABLE_METRICS` variable. If the variable is set it will always disable metrics regardless of what this flag is set to.
+
+                          Default: <true (disabled) if no prometheus service enabled, false otherwise>
+                        type: boolean
+                      idle_file_descriptor_timeout_millis:
+                        default: 0
+                        description: |-
+                          If a file descriptor is idle for this many milliseconds, it will be closed. In the event a client or store takes a long time to send or receive data the file descriptor will be closed, and since `max_open_files` blocks new open_file requests until a slot opens up, it will allow new requests to be processed. If a read or write is attempted on a closed file descriptor, the file will be reopened and the operation will continue.
+
+                          On services where worker(s) and scheduler(s) live in the same process, this also prevents deadlocks if a file->file copy is happening, but cannot open a new file descriptor because the limit has been reached.
+
+                          Default: 1000 (1 second)
+                        format: uint64
+                        minimum: 0.0
+                        type: integer
+                      max_open_files:
+                        description: |-
+                          Maximum number of open files that can be opened at one time. This value is not strictly enforced, it is a best effort. Some internal libraries open files or read metadata from a files which do not obey this limit, however the vast majority of cases will have this limit be honored. As a rule of thumb this value should be less than half the value of `ulimit -n`. Any network open file descriptors is not counted in this limit, but is counted in the kernel limit. It is a good idea to set a very large `ulimit -n`. Note: This value must be greater than 10.
+
+                          Default: 512
+                        format: uint
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - max_open_files
+                    type: object
+                  schedulers:
+                    description: List of schedulers available to use in this config. The keys can be used in other configs when needing to reference a scheduler.
+                    items:
+                      oneOf:
+                      - required:
+                        - simple
+                      - required:
+                        - grpc
+                      - required:
+                        - cacheLookup
+                      - required:
+                        - propertyModifier
+                      properties:
+                        cacheLookup:
+                          properties:
+                            ac_store:
+                              description: The reference to the action cache store used to return cached actions from rather than running them again. To prevent unintended issues, this store should probably be a CompletenessCheckingStore.
+                              type: string
+                            scheduler:
+                              description: The nested scheduler to use if cache lookup fails.
+                              type: string
+                          required:
+                          - ac_store
+                          - scheduler
+                          type: object
+                        grpc:
+                          description: A scheduler that simply forwards requests to an upstream scheduler.  This is useful to use when doing some kind of local action cache or CAS away from the main cluster of workers.  In general, it's more efficient to point the build at the main scheduler directly though.
+                          properties:
+                            connections_per_endpoint:
+                              default: 0
+                              description: The number of connections to make to each specified endpoint to balance the load over multiple TCP connections.  Default 1.
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            endpoint:
+                              description: The upstream scheduler to forward requests to.
+                              properties:
+                                address:
+                                  description: The endpoint address (i.e. grpc(s)://example.com:443).
+                                  type: string
+                                concurrency_limit:
+                                  description: The maximum concurrency to allow on this endpoint.
+                                  format: uint
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                tls_config:
+                                  description: The TLS configuration to use to connect to the endpoint (if grpcs).
+                                  nullable: true
+                                  properties:
+                                    ca_file:
+                                      description: Path to the certificate authority to use to validate the remote.
+                                      type: string
+                                    cert_file:
+                                      description: Path to the certificate file for client authentication.
+                                      nullable: true
+                                      type: string
+                                    key_file:
+                                      description: Path to the private key file for client authentication.
+                                      nullable: true
+                                      type: string
+                                  required:
+                                  - ca_file
+                                  type: object
+                              required:
+                              - address
+                              type: object
+                            max_concurrent_requests:
+                              default: 0
+                              description: Limit the number of simultaneous upstream requests to this many.  A value of zero is treated as unlimited.  If the limit is reached the request is queued.
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            retry:
+                              default:
+                                delay: 0.0
+                                jitter: 0.0
+                                max_retries: 0
+                                retry_on_errors: null
+                              description: Retry configuration to use when a network request fails.
+                              properties:
+                                delay:
+                                  default: 0.0
+                                  description: Delay in seconds for exponential back off.
+                                  format: float
+                                  type: number
+                                jitter:
+                                  default: 0.0
+                                  description: 'Amount of jitter to add as a percentage in decimal form. This will change the formula like: ```haskell random( (2 ^ {attempt_number}) * {delay} * (1 - (jitter / 2)), (2 ^ {attempt_number}) * {delay} * (1 + (jitter / 2)), ) ```'
+                                  format: float
+                                  type: number
+                                max_retries:
+                                  default: 0
+                                  description: Maximum number of retries until retrying stops. Setting this to zero will always attempt 1 time, but not retry.
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                retry_on_errors:
+                                  description: A list of error codes to retry on, if this is not set then the default error codes to retry on are used.  These default codes are the most likely to be non-permanent. - Unknown - Cancelled - DeadlineExceeded - ResourceExhausted - Aborted - Internal - Unavailable - DataLoss
+                                  items:
+                                    description: The possible error codes that might occur on an upstream request.
+                                    enum:
+                                    - Cancelled
+                                    - Unknown
+                                    - InvalidArgument
+                                    - DeadlineExceeded
+                                    - NotFound
+                                    - AlreadyExists
+                                    - PermissionDenied
+                                    - ResourceExhausted
+                                    - FailedPrecondition
+                                    - Aborted
+                                    - OutOfRange
+                                    - Unimplemented
+                                    - Internal
+                                    - Unavailable
+                                    - DataLoss
+                                    - Unauthenticated
+                                    type: string
+                                  nullable: true
+                                  type: array
+                              type: object
+                          required:
+                          - endpoint
+                          type: object
+                        name:
+                          type: string
+                        propertyModifier:
+                          properties:
+                            modifications:
+                              description: A list of modifications to perform to incoming actions for the nested scheduler.  These are performed in order and blindly, so removing a property that doesn't exist is fine and overwriting an existing property is also fine.  If adding properties that do not exist in the nested scheduler is not supported and will likely cause unexpected behaviour.
+                              items:
+                                oneOf:
+                                - required:
+                                  - add
+                                - required:
+                                  - remove
+                                properties:
+                                  add:
+                                    description: Add a property to the action properties.
+                                    properties:
+                                      name:
+                                        description: The name of the property to add.
+                                        type: string
+                                      value:
+                                        description: The value to assign to the property.
+                                        type: string
+                                    required:
+                                    - name
+                                    - value
+                                    type: object
+                                  remove:
+                                    description: Remove a named property from the action.
+                                    type: string
+                                type: object
+                              type: array
+                            scheduler:
+                              description: The nested scheduler to use after modifying the properties.
+                              type: string
+                          required:
+                          - modifications
+                          - scheduler
+                          type: object
+                        simple:
+                          properties:
+                            allocation_strategy:
+                              default: least_recently_used
+                              description: The strategy used to assign workers jobs.
+                              enum:
+                              - least_recently_used
+                              - most_recently_used
+                              type: string
+                            client_action_timeout_s:
+                              default: 0
+                              description: 'Mark operations as completed with error if no client has updated them within this duration. Default: 60 (seconds)'
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            experimental_backend:
+                              description: 'The storage backend to use for the scheduler. Default: memory'
+                              nullable: true
+                              oneOf:
+                              - required:
+                                - Memory
+                              - required:
+                                - redis
+                              properties:
+                                Memory:
+                                  description: Use an in-memory store for the scheduler.
+                                  type: object
+                                redis:
+                                  description: Use a redis store for the scheduler.
+                                  properties:
+                                    redis_store:
+                                      description: 'A reference to the redis store to use for the scheduler. Note: This MUST resolve to a RedisStore.'
+                                      type: string
+                                  required:
+                                  - redis_store
+                                  type: object
+                              type: object
+                            max_job_retries:
+                              default: 0
+                              description: 'If a job returns an internal error or times out this many times when attempting to run on a worker the scheduler will return the last error to the client. Jobs will be retried and this configuration is to help prevent one rogue job from infinitely retrying and taking up a lot of resources when the task itself is the one causing the server to go into a bad state. Default: 3'
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            retain_completed_for_s:
+                              default: 0
+                              description: 'The amount of time to retain completed actions in memory for in case a WaitExecution is called after the action has completed. Default: 60 (seconds)'
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            supported_platform_properties:
+                              additionalProperties:
+                                description: When the scheduler matches tasks to workers that are capable of running the task, this value will be used to determine how the property is treated.
+                                enum:
+                                - minimum
+                                - exact
+                                - priority
+                                type: string
+                              description: |-
+                                A list of supported platform properties mapped to how these properties are used when the scheduler looks for worker nodes capable of running the task.
+
+                                For example, a value of: ```json { "cpu_count": "minimum", "cpu_arch": "exact" } ``` With a job that contains: ```json { "cpu_count": "8", "cpu_arch": "arm" } ``` Will result in the scheduler filtering out any workers that do not have "cpu_arch" = "arm" and filter out any workers that have less than 8 cpu cores available.
+
+                                The property names here must match the property keys provided by the worker nodes when they join the pool. In other words, the workers will publish their capabilities to the scheduler when they join the worker pool. If the worker fails to notify the scheduler of its (for example) "cpu_arch", the scheduler will never send any jobs to it, if all jobs have the "cpu_arch" label. There is no special treatment of any platform property labels other and entirely driven by worker configs and this config.
+                              nullable: true
+                              type: object
+                            worker_timeout_s:
+                              default: 0
+                              description: 'Remove workers from pool once the worker has not responded in this amount of time in seconds. Default: 5 (seconds)'
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    nullable: true
+                    type: array
+                  servers:
+                    description: Servers to setup for this process.
+                    items:
+                      properties:
+                        listener:
+                          description: Configuration
+                          oneOf:
+                          - required:
+                            - http
+                          properties:
+                            http:
+                              description: Listener for HTTP/HTTPS/HTTP2 sockets.
+                              properties:
+                                advanced_http:
+                                  default:
+                                    experimental_http2_adaptive_window: null
+                                    experimental_http2_enable_connect_protocol: null
+                                    experimental_http2_initial_connection_window_size: null
+                                    experimental_http2_initial_stream_window_size: null
+                                    experimental_http2_keep_alive_timeout: null
+                                    experimental_http2_max_concurrent_streams: null
+                                    experimental_http2_max_frame_size: null
+                                    experimental_http2_max_header_list_size: null
+                                    experimental_http2_max_pending_accept_reset_streams: null
+                                    experimental_http2_max_send_buf_size: null
+                                    http2_keep_alive_interval: null
+                                  description: Advanced Http server configuration.
+                                  properties:
+                                    experimental_http2_adaptive_window:
+                                      nullable: true
+                                      type: boolean
+                                    experimental_http2_enable_connect_protocol:
+                                      nullable: true
+                                      type: boolean
+                                    experimental_http2_initial_connection_window_size:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_initial_stream_window_size:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_keep_alive_timeout:
+                                      description: 'Note: This is in seconds.'
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_max_concurrent_streams:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_max_frame_size:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_max_header_list_size:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_max_pending_accept_reset_streams:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    experimental_http2_max_send_buf_size:
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    http2_keep_alive_interval:
+                                      description: 'Interval to send keep-alive pings via HTTP2. Note: This is in seconds.'
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                  type: object
+                                compression:
+                                  default:
+                                    accepted_compression_algorithms: []
+                                  description: Data transport compression configuration to use for this service.
+                                  properties:
+                                    accepted_compression_algorithms:
+                                      description: |-
+                                        The compression algorithm that the server will accept from clients. The server will broadcast the supported compression algorithms to clients and the client will choose which compression algorithm to use. Enabling this will likely save a lot of data transfer, but will consume a lot of CPU and add a lot of latency. see: <https://github.com/tracemachina/nativelink/issues/109>
+
+                                        Default: {no supported compression}
+                                      items:
+                                        enum:
+                                        - none
+                                        - gzip
+                                        type: string
+                                      type: array
+                                    send_compression_algorithm:
+                                      description: |-
+                                        The compression algorithm that the server will use when sending responses to clients. Enabling this will likely save a lot of data transfer, but will consume a lot of CPU and add a lot of latency. see: <https://github.com/tracemachina/nativelink/issues/109>
+
+                                        Default: `HttpCompressionAlgorithm::none`
+                                      enum:
+                                      - none
+                                      - gzip
+                                      nullable: true
+                                      type: string
+                                  required:
+                                  - accepted_compression_algorithms
+                                  type: object
+                                socket_address:
+                                  description: 'Address to listen on. Example: `127.0.0.1:8080` or `:8080` to listen to all IPs.'
+                                  type: string
+                                tls:
+                                  description: |-
+                                    Tls Configuration for this server. If not set, the server will not use TLS.
+
+                                    Default: None
+                                  nullable: true
+                                  properties:
+                                    cert_file:
+                                      description: Path to the certificate file.
+                                      type: string
+                                    client_ca_file:
+                                      description: Path to the certificate authority for mTLS, if client authentication is required for this endpoint.
+                                      nullable: true
+                                      type: string
+                                    client_crl_file:
+                                      description: Path to the certificate revocation list for mTLS, if client authentication is required for this endpoint.
+                                      nullable: true
+                                      type: string
+                                    key_file:
+                                      description: Path to the private key file.
+                                      type: string
+                                  required:
+                                  - cert_file
+                                  - key_file
+                                  type: object
+                              required:
+                              - socket_address
+                              type: object
+                          type: object
+                        name:
+                          default: ''
+                          description: |-
+                            Name of the server. This is used to help identify the service for telemetry and logs.
+
+                            Default: {index of server in config}
+                          type: string
+                        services:
+                          description: Services to attach to server.
+                          nullable: true
+                          properties:
+                            ac:
+                              additionalProperties:
+                                properties:
+                                  ac_store:
+                                    description: The store name referenced in the `stores` map in the main config. This store name referenced here may be reused multiple times.
+                                    type: string
+                                  read_only:
+                                    default: false
+                                    description: Whether the Action Cache store may be written to, this if set to false it is only possible to read from the Action Cache.
+                                    type: boolean
+                                required:
+                                - ac_store
+                                type: object
+                              description: The Action Cache (AC) backend config. The key is the instance_name used in the protocol and the value is the underlying AC store config.
+                              nullable: true
+                              type: object
+                            admin:
+                              description: This is the service for any administrative tasks. It provides a REST API endpoint for administrative purposes.
+                              nullable: true
+                              properties:
+                                path:
+                                  default: ''
+                                  description: |-
+                                    Path to register the admin API. If path is "/admin", and your domain is "example.com", you can reach the endpoint with: <http://example.com/admin>.
+
+                                    Default: "/admin"
+                                  type: string
+                              type: object
+                            bytestream:
+                              description: This is the service used to stream data to and from the CAS. Bazel's protocol strongly encourages users to use this streaming interface to interact with the CAS when the data is large.
+                              nullable: true
+                              properties:
+                                cas_stores:
+                                  additionalProperties:
+                                    type: string
+                                  description: Name of the store in the "stores" configuration.
+                                  type: object
+                                max_bytes_per_stream:
+                                  default: 0
+                                  description: |-
+                                    Max number of bytes to send on each grpc stream chunk. According to <https://github.com/grpc/grpc.github.io/issues/371> 16KiB - 64KiB is optimal.
+
+                                    Default: 64KiB
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_decoding_message_size:
+                                  default: 0
+                                  description: 'Maximum number of bytes to decode on each grpc stream chunk. Default: 4 MiB'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                persist_stream_on_disconnect_timeout:
+                                  default: 0
+                                  description: |-
+                                    In the event a client disconnects while uploading a blob, we will hold the internal stream open for this many seconds before closing it. This allows clients that disconnect to reconnect and continue uploading the same blob.
+
+                                    Default: 10 (seconds)
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                              required:
+                              - cas_stores
+                              type: object
+                            capabilities:
+                              additionalProperties:
+                                properties:
+                                  remote_execution:
+                                    description: Configuration for remote execution capabilities. If not set the capabilities service will inform the client that remote execution is not supported.
+                                    nullable: true
+                                    properties:
+                                      scheduler:
+                                        description: Scheduler used to configure the capabilities of remote execution.
+                                        type: string
+                                    required:
+                                    - scheduler
+                                    type: object
+                                type: object
+                              description: Capabilities service is required in order to use most of the bazel protocol. This service is used to provide the supported features and versions of this bazel GRPC service.
+                              nullable: true
+                              type: object
+                            cas:
+                              additionalProperties:
+                                properties:
+                                  cas_store:
+                                    description: The store name referenced in the `stores` map in the main config. This store name referenced here may be reused multiple times.
+                                    type: string
+                                required:
+                                - cas_store
+                                type: object
+                              description: The Content Addressable Storage (CAS) backend config. The key is the instance_name used in the protocol and the value is the underlying CAS store config.
+                              nullable: true
+                              type: object
+                            execution:
+                              additionalProperties:
+                                properties:
+                                  cas_store:
+                                    description: The store name referenced in the `stores` map in the main config. This store name referenced here may be reused multiple times. This value must be a CAS store reference.
+                                    type: string
+                                  scheduler:
+                                    description: The scheduler name referenced in the `schedulers` map in the main config.
+                                    type: string
+                                required:
+                                - cas_store
+                                - scheduler
+                                type: object
+                              description: 'The remote execution service configuration. NOTE: This service is under development and is currently just a place holder.'
+                              nullable: true
+                              type: object
+                            experimental_bep:
+                              description: Experimental - Build Event Protocol (BEP) configuration. This is the service that will consume build events from the client and publish them to a store for processing by an external service.
+                              nullable: true
+                              properties:
+                                store:
+                                  description: The store to publish build events to. The store name referenced in the `stores` map in the main config.
+                                  type: string
+                              required:
+                              - store
+                              type: object
+                            experimental_prometheus:
+                              description: Experimental - Prometheus metrics configuration. Metrics are gathered as a singleton but may be served on multiple endpoints.
+                              nullable: true
+                              properties:
+                                path:
+                                  default: ''
+                                  description: |-
+                                    Path to register prometheus metrics. If path is "/metrics", and your domain is "example.com", you can reach the endpoint with: <http://example.com/metrics>.
+
+                                    Default: "/metrics"
+                                  type: string
+                              type: object
+                            health:
+                              description: This is the service for health status check.
+                              nullable: true
+                              properties:
+                                path:
+                                  default: ''
+                                  description: |-
+                                    Path to register the health status check. If path is "/status", and your domain is "example.com", you can reach the endpoint with: <http://example.com/status>.
+
+                                    Default: "/status"
+                                  type: string
+                              type: object
+                            worker_api:
+                              description: 'This is the service used for workers to connect and communicate through. NOTE: This service should be served on a different, non-public port. In other words, `worker_api` configuration should not have any other services that are served on the same port. Doing so is a security risk, as workers have a different permission set than a client that makes the remote execution/cache requests.'
+                              nullable: true
+                              properties:
+                                scheduler:
+                                  description: The scheduler name referenced in the `schedulers` map in the main config.
+                                  type: string
+                              required:
+                              - scheduler
+                              type: object
+                          type: object
+                      required:
+                      - listener
+                      type: object
+                    type: array
+                  stores:
+                    description: List of stores available to use in this config. The keys can be used in other configs when needing to reference a store.
+                    items:
+                      oneOf:
+                      - required:
+                        - memory
+                      - required:
+                        - s3
+                      - required:
+                        - verify
+                      - required:
+                        - completenessChecking
+                      - required:
+                        - compression
+                      - required:
+                        - dedup
+                      - required:
+                        - existenceCache
+                      - required:
+                        - fastSlow
+                      - required:
+                        - shard
+                      - required:
+                        - filesystem
+                      - required:
+                        - ref
+                      - required:
+                        - sizePartitioning
+                      - required:
+                        - grpc
+                      - required:
+                        - redis
+                      - required:
+                        - noop
+                      properties:
+                        completenessChecking:
+                          description: |-
+                            Completeness checking store verifies if the output files & folders exist in the CAS before forwarding the request to the underlying store. Note: This store should only be used on AC stores.
+
+                            **Example JSON Config:** ```json "completeness_checking": { "backend": { "filesystem": { "content_path": "~/.cache/nativelink/content_path-ac", "temp_path": "~/.cache/nativelink/tmp_path-ac", "eviction_policy": { // 500mb. "max_bytes": 500000000, } } }, "cas_store": { "ref_store": { "name": "CAS_MAIN_STORE" } } } ```
+                          properties:
+                            backend:
+                              description: The underlying store wrap around. All content will first flow through self before forwarding to backend. In the event there is an error detected in self, the connection to the backend will be terminated, and early termination should always cause updates to fail on the backend.
+                              type: string
+                            cas_store:
+                              description: When a request is made, the results are decoded and all output digests/files are verified to exist in this CAS store before returning success.
+                              type: string
+                          required:
+                          - backend
+                          - cas_store
+                          type: object
+                        compression:
+                          description: |-
+                            A compression store that will compress the data inbound and outbound. There will be a non-trivial cost to compress and decompress the data, but in many cases if the final store is a store that requires network transport and/or storage space is a concern it is often faster and more efficient to use this store before those stores.
+
+                            **Example JSON Config:** ```json "compression": { "compression_algorithm": { "lz4": {} }, "backend": { "filesystem": { "content_path": "/tmp/nativelink/data/content_path-cas", "temp_path": "/tmp/nativelink/data/tmp_path-cas", "eviction_policy": { // 2gb. "max_bytes": 2000000000, } } } } ```
+                          properties:
+                            backend:
+                              description: The underlying store wrap around. All content will first flow through self before forwarding to backend. In the event there is an error detected in self, the connection to the backend will be terminated, and early termination should always cause updates to fail on the backend.
+                              type: string
+                            compression_algorithm:
+                              description: The compression algorithm to use.
+                              oneOf:
+                              - required:
+                                - lz4
+                              properties:
+                                lz4:
+                                  description: |-
+                                    LZ4 compression algorithm is extremely fast for compression and decompression, however does not perform very well in compression ratio. In most cases build artifacts are highly compressible, however lz4 is quite good at aborting early if the data is not deemed very compressible.
+
+                                    see: <https://lz4.github.io/lz4/>
+                                  properties:
+                                    block_size:
+                                      default: 0
+                                      description: |-
+                                        Size of the blocks to compress. Higher values require more ram, but might yield slightly better compression ratios.
+
+                                        Default: 65536 (64k).
+                                      format: uint32
+                                      minimum: 0.0
+                                      type: integer
+                                    max_decode_block_size:
+                                      default: 0
+                                      description: |-
+                                        Maximum size allowed to attempt to deserialize data into. This is needed because the block_size is embedded into the data so if there was a bad actor, they could upload an extremely large block_size'ed entry and we'd allocate a large amount of memory when retrieving the data. To prevent this from happening, we allow you to specify the maximum that we'll attempt deserialize.
+
+                                        Default: value in `block_size`.
+                                      format: uint32
+                                      minimum: 0.0
+                                      type: integer
+                                  type: object
+                              type: object
+                          required:
+                          - backend
+                          - compression_algorithm
+                          type: object
+                        dedup:
+                          description: |-
+                            A dedup store will take the inputs and run a rolling hash algorithm on them to slice the input into smaller parts then run a sha256 algorithm on the slice and if the object doesn't already exist, upload the slice to the `content_store` using a new digest of just the slice. Once all parts exist, an Action-Cache-like digest will be built and uploaded to the `index_store` which will contain a reference to each chunk/digest of the uploaded file. Downloading a request will first grab the index from the `index_store`, and forward the download content of each chunk as if it were one file.
+
+                            This store is exceptionally good when the following conditions are met: * Content is mostly the same (inserts, updates, deletes are ok) * Content is not compressed or encrypted * Uploading or downloading from `content_store` is the bottleneck.
+
+                            Note: This store pairs well when used with CompressionStore as the `content_store`, but never put DedupStore as the backend of CompressionStore as it will negate all the gains.
+
+                            Note: When running `.has()` on this store, it will only check to see if the entry exists in the `index_store` and not check if the individual chunks exist in the `content_store`.
+
+                            **Example JSON Config:** ```json "dedup": { "index_store": { "memory_store": { "max_size": 1000000000, // 1GB "eviction_policy": "LeastRecentlyUsed" } }, "content_store": { "compression": { "compression_algorithm": { "lz4": {} }, "backend": { "fast_slow": { "fast": { "memory_store": { "max_size": 500000000, // 500MB "eviction_policy": "LeastRecentlyUsed" } }, "slow": { "filesystem": { "content_path": "/tmp/nativelink/data/content_path-content", "temp_path": "/tmp/nativelink/data/tmp_path-content", "eviction_policy": { "max_bytes": 2000000000 // 2gb. } } } } } } } } ```
+                          properties:
+                            content_store:
+                              description: The store where the individual chunks will be uploaded. This store should generally be the slower & larger store.
+                              type: string
+                            index_store:
+                              description: Store used to store the index of each dedup slice. This store should generally be fast and small.
+                              type: string
+                            max_concurrent_fetch_per_get:
+                              default: 0
+                              description: |-
+                                Due to implementation detail, we want to prefer to download the first chunks of the file so we can stream the content out and free up some of our buffers. This configuration will be used to to restrict the number of concurrent chunk downloads at a time per `get()` request.
+
+                                This setting will also affect how much memory might be used per `get()` request. Estimated worst case memory per `get()` request is: `max_concurrent_fetch_per_get * max_size`.
+
+                                Default: 10
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            max_size:
+                              default: 0
+                              description: |-
+                                Maximum size a chunk is allowed to be.
+
+                                Default: 524288 (512k)
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            min_size:
+                              default: 0
+                              description: |-
+                                Minimum size that a chunk will be when slicing up the content. Note: This setting can be increased to improve performance because it will actually not check this number of bytes when deciding where to partition the data.
+
+                                Default: 65536 (64k)
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            normal_size:
+                              default: 0
+                              description: |-
+                                A best-effort attempt will be made to keep the average size of the chunks to this number. It is not a guarantee, but a slight attempt will be made.
+
+                                This value will also be about the threshold used to determine if we should even attempt to dedup the entry or just forward it directly to the content_store without an index. The actual value will be about `normal_size * 1.3` due to implementation details.
+
+                                Default: 262144 (256k)
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                          required:
+                          - content_store
+                          - index_store
+                          type: object
+                        existenceCache:
+                          description: |-
+                            Existence store will wrap around another store and cache calls to has so that subsequent has_with_results calls will be faster. This is useful for cases when you have a store that is slow to respond to has calls. Note: This store should only be used on CAS stores.
+
+                            **Example JSON Config:** ```json "existence_cache": { "backend": { "memory": { "eviction_policy": { // 500mb. "max_bytes": 500000000, } } }, "cas_store": { "ref_store": { "name": "CAS_MAIN_STORE" } } } ```
+                          properties:
+                            backend:
+                              description: The underlying store wrap around. All content will first flow through self before forwarding to backend. In the event there is an error detected in self, the connection to the backend will be terminated, and early termination should always cause updates to fail on the backend.
+                              type: string
+                            eviction_policy:
+                              description: Policy used to evict items out of the store. Failure to set this value will cause items to never be removed from the store causing infinite memory usage.
+                              nullable: true
+                              properties:
+                                evict_bytes:
+                                  default: 0
+                                  description: 'When eviction starts based on hitting max_bytes, continue until max_bytes - evict_bytes is met to create a low watermark.  This stops operations from thrashing when the store is close to the limit. Default: 0'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_bytes:
+                                  default: 0
+                                  description: 'Maximum number of bytes before eviction takes place. Default: 0. Zero means never evict based on size.'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_count:
+                                  default: 0
+                                  description: 'Maximum size of the store before an eviction takes place. Default: 0. Zero means never evict based on count.'
+                                  format: uint64
+                                  minimum: 0.0
+                                  type: integer
+                                max_seconds:
+                                  default: 0
+                                  description: 'Maximum number of seconds for an entry to live since it was last accessed before it is evicted. Default: 0. Zero means never evict based on time.'
+                                  format: uint32
+                                  minimum: 0.0
+                                  type: integer
+                              type: object
+                          required:
+                          - backend
+                          type: object
+                        fastSlow:
+                          description: |-
+                            FastSlow store will first try to fetch the data from the `fast` store and then if it does not exist try the `slow` store. When the object does exist in the `slow` store, it will copy the data to the `fast` store while returning the data. This store should be thought of as a store that "buffers" the data to the `fast` store. On uploads it will mirror data to both `fast` and `slow` stores.
+
+                            WARNING: If you need data to always exist in the `slow` store for something like remote execution, be careful because this store will never check to see if the objects exist in the `slow` store if it exists in the `fast` store (ie: it assumes that if an object exists `fast` store it will exist in `slow` store).
+
+                            ***Example JSON Config:*** ```json "fast_slow": { "fast": { "filesystem": { "content_path": "/tmp/nativelink/data/content_path-index", "temp_path": "/tmp/nativelink/data/tmp_path-index", "eviction_policy": { // 500mb. "max_bytes": 500000000, } } }, "slow": { "filesystem": { "content_path": "/tmp/nativelink/data/content_path-index", "temp_path": "/tmp/nativelink/data/tmp_path-index", "eviction_policy": { // 500mb. "max_bytes": 500000000, } } } } ```
+                          properties:
+                            fast:
+                              description: Fast store that will be attempted to be contacted before reaching out to the `slow` store.
+                              type: string
+                            slow:
+                              description: If the object does not exist in the `fast` store it will try to get it from this store.
+                              type: string
+                          required:
+                          - fast
+                          - slow
+                          type: object
+                        filesystem:
+                          description: |-
+                            Stores the data on the filesystem. This store is designed for local persistent storage. Restarts of this program should restore the previous state, meaning anything uploaded will be persistent as long as the filesystem integrity holds. This store uses the filesystem's `atime` (access time) to hold the last touched time of the file(s).
+
+                            **Example JSON Config:** ```json "filesystem": { "content_path": "/tmp/nativelink/data-worker-test/content_path-cas", "temp_path": "/tmp/nativelink/data-worker-test/tmp_path-cas", "eviction_policy": { // 10gb. "max_bytes": 10000000000, } } ```
+                          properties:
+                            block_size:
+                              default: 0
+                              description: 'The block size of the filesystem for the running machine value is used to determine an entry''s actual size on disk consumed For a 4KB block size filesystem, a 1B file actually consumes 4KB Default: 4096'
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            content_path:
+                              description: Path on the system where to store the actual content. This is where the bulk of the data will be placed. On service bootup this folder will be scanned and all files will be added to the cache. In the event one of the files doesn't match the criteria, the file will be deleted.
+                              type: string
+                            eviction_policy:
+                              description: Policy used to evict items out of the store. Failure to set this value will cause items to never be removed from the store causing infinite memory usage.
+                              nullable: true
+                              properties:
+                                evict_bytes:
+                                  default: 0
+                                  description: 'When eviction starts based on hitting max_bytes, continue until max_bytes - evict_bytes is met to create a low watermark.  This stops operations from thrashing when the store is close to the limit. Default: 0'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_bytes:
+                                  default: 0
+                                  description: 'Maximum number of bytes before eviction takes place. Default: 0. Zero means never evict based on size.'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_count:
+                                  default: 0
+                                  description: 'Maximum size of the store before an eviction takes place. Default: 0. Zero means never evict based on count.'
+                                  format: uint64
+                                  minimum: 0.0
+                                  type: integer
+                                max_seconds:
+                                  default: 0
+                                  description: 'Maximum number of seconds for an entry to live since it was last accessed before it is evicted. Default: 0. Zero means never evict based on time.'
+                                  format: uint32
+                                  minimum: 0.0
+                                  type: integer
+                              type: object
+                            read_buffer_size:
+                              default: 0
+                              description: 'Buffer size to use when reading files. Generally this should be left to the default value except for testing. Default: 32k.'
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            temp_path:
+                              description: 'A temporary location of where files that are being uploaded or deleted will be placed while the content cannot be guaranteed to be accurate. This location must be on the same block device as `content_path` so atomic moves can happen (ie: move without copy). All files in this folder will be deleted on every startup.'
+                              type: string
+                          required:
+                          - content_path
+                          - temp_path
+                          type: object
+                        grpc:
+                          description: |-
+                            This store will pass-through calls to another GRPC store. This store is not designed to be used as a sub-store of another store, but it does satisfy the interface and will likely work.
+
+                            One major GOTCHA is that some stores use a special function on this store to get the size of the underlying object, which is only reliable when this store is serving the a CAS store, not an AC store. If using this store directly without being a child of any store there are no side effects and is the most efficient way to use it.
+
+                            **Example JSON Config:** ```json "grpc": { "instance_name": "main", "endpoints": [ {"address": "grpc://${CAS_ENDPOINT:-127.0.0.1}:50051"} ], "store_type": "ac" } ```
+                          properties:
+                            connections_per_endpoint:
+                              default: 0
+                              description: The number of connections to make to each specified endpoint to balance the load over multiple TCP connections.  Default 1.
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            endpoints:
+                              description: The endpoint of the grpc connection.
+                              items:
+                                properties:
+                                  address:
+                                    description: The endpoint address (i.e. grpc(s)://example.com:443).
+                                    type: string
+                                  concurrency_limit:
+                                    description: The maximum concurrency to allow on this endpoint.
+                                    format: uint
+                                    minimum: 0.0
+                                    nullable: true
+                                    type: integer
+                                  tls_config:
+                                    description: The TLS configuration to use to connect to the endpoint (if grpcs).
+                                    nullable: true
+                                    properties:
+                                      ca_file:
+                                        description: Path to the certificate authority to use to validate the remote.
+                                        type: string
+                                      cert_file:
+                                        description: Path to the certificate file for client authentication.
+                                        nullable: true
+                                        type: string
+                                      key_file:
+                                        description: Path to the private key file for client authentication.
+                                        nullable: true
+                                        type: string
+                                    required:
+                                    - ca_file
+                                    type: object
+                                required:
+                                - address
+                                type: object
+                              type: array
+                            instance_name:
+                              default: ''
+                              description: Instance name for GRPC calls. Proxy calls will have the instance_name changed to this.
+                              type: string
+                            max_concurrent_requests:
+                              default: 0
+                              description: Limit the number of simultaneous upstream requests to this many.  A value of zero is treated as unlimited.  If the limit is reached the request is queued.
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            retry:
+                              default:
+                                delay: 0.0
+                                jitter: 0.0
+                                max_retries: 0
+                                retry_on_errors: null
+                              description: Retry configuration to use when a network request fails.
+                              properties:
+                                delay:
+                                  default: 0.0
+                                  description: Delay in seconds for exponential back off.
+                                  format: float
+                                  type: number
+                                jitter:
+                                  default: 0.0
+                                  description: 'Amount of jitter to add as a percentage in decimal form. This will change the formula like: ```haskell random( (2 ^ {attempt_number}) * {delay} * (1 - (jitter / 2)), (2 ^ {attempt_number}) * {delay} * (1 + (jitter / 2)), ) ```'
+                                  format: float
+                                  type: number
+                                max_retries:
+                                  default: 0
+                                  description: Maximum number of retries until retrying stops. Setting this to zero will always attempt 1 time, but not retry.
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                retry_on_errors:
+                                  description: A list of error codes to retry on, if this is not set then the default error codes to retry on are used.  These default codes are the most likely to be non-permanent. - Unknown - Cancelled - DeadlineExceeded - ResourceExhausted - Aborted - Internal - Unavailable - DataLoss
+                                  items:
+                                    description: The possible error codes that might occur on an upstream request.
+                                    enum:
+                                    - Cancelled
+                                    - Unknown
+                                    - InvalidArgument
+                                    - DeadlineExceeded
+                                    - NotFound
+                                    - AlreadyExists
+                                    - PermissionDenied
+                                    - ResourceExhausted
+                                    - FailedPrecondition
+                                    - Aborted
+                                    - OutOfRange
+                                    - Unimplemented
+                                    - Internal
+                                    - Unavailable
+                                    - DataLoss
+                                    - Unauthenticated
+                                    type: string
+                                  nullable: true
+                                  type: array
+                              type: object
+                            store_type:
+                              description: The type of the upstream store, this ensures that the correct server calls are made.
+                              enum:
+                              - cas
+                              - ac
+                              type: string
+                          required:
+                          - endpoints
+                          - store_type
+                          type: object
+                        memory:
+                          description: |-
+                            Memory store will store all data in a hashmap in memory.
+
+                            **Example JSON Config:** ```json "memory": { "eviction_policy": { // 10mb. "max_bytes": 10000000, } } } ```
+                          properties:
+                            eviction_policy:
+                              description: Policy used to evict items out of the store. Failure to set this value will cause items to never be removed from the store causing infinite memory usage.
+                              nullable: true
+                              properties:
+                                evict_bytes:
+                                  default: 0
+                                  description: 'When eviction starts based on hitting max_bytes, continue until max_bytes - evict_bytes is met to create a low watermark.  This stops operations from thrashing when the store is close to the limit. Default: 0'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_bytes:
+                                  default: 0
+                                  description: 'Maximum number of bytes before eviction takes place. Default: 0. Zero means never evict based on size.'
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                max_count:
+                                  default: 0
+                                  description: 'Maximum size of the store before an eviction takes place. Default: 0. Zero means never evict based on count.'
+                                  format: uint64
+                                  minimum: 0.0
+                                  type: integer
+                                max_seconds:
+                                  default: 0
+                                  description: 'Maximum number of seconds for an entry to live since it was last accessed before it is evicted. Default: 0. Zero means never evict based on time.'
+                                  format: uint32
+                                  minimum: 0.0
+                                  type: integer
+                              type: object
+                          type: object
+                        name:
+                          type: string
+                        noop:
+                          description: |-
+                            Noop store is a store that sends streams into the void and all data retrieval will return 404 (NotFound). This can be useful for cases where you may need to partition your data and part of your data needs to be discarded.
+
+                            **Example JSON Config:** ```json "noop": {} ```
+                          type: object
+                        redis:
+                          description: |-
+                            Stores data in any stores compatible with Redis APIs.
+
+                            Pairs well with SizePartitioning and/or FastSlow stores. Ideal for accepting small object sizes as most redis store services have a max file upload of between 256Mb-512Mb.
+
+                            **Example JSON Config:** ```json "redis_store": { "addresses": [ "redis://127.0.0.1:6379/", ] } ```
+                          properties:
+                            addresses:
+                              description: 'The hostname or IP address of the Redis server. Ex: ["redis://username:password@redis-server-url:6380/99"] 99 Represents database ID, 6380 represents the port.'
+                              items:
+                                type: string
+                              type: array
+                            broadcast_channel_capacity:
+                              default: 0
+                              description: |-
+                                When using pubsub interface, this is the maximum number of items to keep queued up before dropping old items.
+
+                                Default: 4096
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            command_timeout_ms:
+                              default: 0
+                              description: |-
+                                The amount of time in milliseconds until the redis store considers the command to be timed out. This will trigger a retry of the command and potentially a reconnection to the redis server.
+
+                                Default: 10000 (10 seconds)
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            connection_pool_size:
+                              default: 0
+                              description: |-
+                                The number of connections to keep open to the redis server(s).
+
+                                Default: 3
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            connection_timeout_ms:
+                              default: 0
+                              description: |-
+                                The amount of time in milliseconds until the redis store considers the connection to unresponsive. This will trigger a reconnection to the redis server.
+
+                                Default: 3000 (3 seconds)
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            connection_timeout_s:
+                              default: 0
+                              description: |-
+                                The connection timeout for the Redis connection in seconds.
+
+                                Default: 10
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            experimental_pub_sub_channel:
+                              description: |-
+                                An optional and experimental Redis channel to publish write events to.
+
+                                If set, every time a write operation is made to a Redis node then an event will be published to a Redis channel with the given name. If unset, the writes will still be made, but the write events will not be published.
+
+                                Default: (Empty String / No Channel)
+                              nullable: true
+                              type: string
+                            key_prefix:
+                              default: ''
+                              description: |-
+                                An optional prefix to prepend to all keys in this store.
+
+                                Setting this value can make it convenient to query or organize your data according to the shared prefix.
+
+                                Default: (Empty String / No Prefix)
+                              type: string
+                            max_chunk_uploads_per_update:
+                              default: 0
+                              description: |-
+                                The maximum number of upload chunks to allow per update. This is used to limit the amount of memory used when uploading large objects to the redis server. A good rule of thumb is to think of the data as: AVAIL_MEMORY / (read_chunk_size * max_chunk_uploads_per_update) = THORETICAL_MAX_CONCURRENT_UPLOADS (note: it is a good idea to divide AVAIL_MAX_MEMORY by ~10 to account for other memory usage)
+
+                                Default: 10
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            mode:
+                              default: standard
+                              description: |-
+                                Set the mode Redis is operating in.
+
+                                Available options are "cluster" for [cluster mode](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/), "sentinel" for [sentinel mode](https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/), or "standard" if Redis is operating in neither cluster nor sentinel mode.
+
+                                Default: standard,
+                              enum:
+                              - cluster
+                              - sentinel
+                              - standard
+                              type: string
+                            read_chunk_size:
+                              default: 0
+                              description: |-
+                                The amount of data to read from the redis server at a time. This is used to limit the amount of memory used when reading large objects from the redis server as well as limiting the amount of time a single read operation can take.
+
+                                IMPORTANT: If this value is too high, the `command_timeout_ms` might be triggered if the latency or throughput to the redis server is too low.
+
+                                Default: 64KiB
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            response_timeout_s:
+                              default: 0
+                              description: |-
+                                The response timeout for the Redis connection in seconds.
+
+                                Default: 10
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            retry:
+                              default:
+                                delay: 0.0
+                                jitter: 0.0
+                                max_retries: 0
+                                retry_on_errors: null
+                              description: |-
+                                Retry configuration to use when a network request fails. See the `Retry` struct for more information.
+
+                                Default: Retry { max_retries: 0, /* unlimited */ delay: 0.1, /* 100ms */ jitter: 0.5, /* 50% */ retry_on_errors: None, /* not used in redis store */ }
+                              properties:
+                                delay:
+                                  default: 0.0
+                                  description: Delay in seconds for exponential back off.
+                                  format: float
+                                  type: number
+                                jitter:
+                                  default: 0.0
+                                  description: 'Amount of jitter to add as a percentage in decimal form. This will change the formula like: ```haskell random( (2 ^ {attempt_number}) * {delay} * (1 - (jitter / 2)), (2 ^ {attempt_number}) * {delay} * (1 + (jitter / 2)), ) ```'
+                                  format: float
+                                  type: number
+                                max_retries:
+                                  default: 0
+                                  description: Maximum number of retries until retrying stops. Setting this to zero will always attempt 1 time, but not retry.
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                retry_on_errors:
+                                  description: A list of error codes to retry on, if this is not set then the default error codes to retry on are used.  These default codes are the most likely to be non-permanent. - Unknown - Cancelled - DeadlineExceeded - ResourceExhausted - Aborted - Internal - Unavailable - DataLoss
+                                  items:
+                                    description: The possible error codes that might occur on an upstream request.
+                                    enum:
+                                    - Cancelled
+                                    - Unknown
+                                    - InvalidArgument
+                                    - DeadlineExceeded
+                                    - NotFound
+                                    - AlreadyExists
+                                    - PermissionDenied
+                                    - ResourceExhausted
+                                    - FailedPrecondition
+                                    - Aborted
+                                    - OutOfRange
+                                    - Unimplemented
+                                    - Internal
+                                    - Unavailable
+                                    - DataLoss
+                                    - Unauthenticated
+                                    type: string
+                                  nullable: true
+                                  type: array
+                              type: object
+                          required:
+                          - addresses
+                          type: object
+                        ref:
+                          description: |-
+                            Store used to reference a store in the root store manager. This is useful for cases when you want to share a store in different nested stores. Example, you may want to share the same memory store used for the action cache, but use a FastSlowStore and have the fast store also share the memory store for efficiency.
+
+                            **Example JSON Config:** ```json "ref_store": { "name": "FS_CONTENT_STORE" } ```
+                          properties:
+                            name:
+                              description: Name of the store under the root "stores" config object.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        s3:
+                          description: |-
+                            S3 store will use Amazon's S3 service as a backend to store the files. This configuration can be used to share files across multiple instances.
+
+                            This configuration will never delete files, so you are responsible for purging old files in other ways.
+
+                            **Example JSON Config:** ```json "experimental_s3_store": { "region": "eu-north-1", "bucket": "crossplane-bucket-af79aeca9", "key_prefix": "test-prefix-index/", "retry": { "max_retries": 6, "delay": 0.3, "jitter": 0.5 }, "multipart_max_concurrent_uploads": 10 } ```
+                          properties:
+                            bucket:
+                              default: ''
+                              description: Bucket name to use as the backend.
+                              type: string
+                            consider_expired_after_s:
+                              default: 0
+                              description: |-
+                                If the number of seconds since the `last_modified` time of the object is greater than this value, the object will not be considered "existing". This allows for external tools to delete objects that have not been uploaded in a long time. If a client receives a NotFound the client should re-upload the object.
+
+                                There should be sufficient buffer time between how long the expiration configuration of the external tool is and this value. Keeping items around for a few days is generally a good idea.
+
+                                Default: 0. Zero means never consider an object expired.
+                              format: uint32
+                              minimum: 0.0
+                              type: integer
+                            disable_http2:
+                              default: false
+                              description: |-
+                                Disable http/2 connections and only use http/1.1. Default client configuration will have http/1.1 and http/2 enabled for connection schemes. Http/2 should be disabled if environments have poor support or performance related to http/2. Safe to keep default unless underlying network environment or S3 API servers specify otherwise.
+
+                                Default: false
+                              type: boolean
+                            insecure_allow_http:
+                              default: false
+                              description: |-
+                                Allow unencrypted HTTP connections. Only use this for local testing.
+
+                                Default: false
+                              type: boolean
+                            key_prefix:
+                              description: If you wish to prefix the location on s3. If None, no prefix will be used.
+                              nullable: true
+                              type: string
+                            max_retry_buffer_per_request:
+                              description: |-
+                                The maximum buffer size to retain in case of a retryable error during upload. Setting this to zero will disable upload buffering; this means that in the event of a failure during upload, the entire upload will be aborted and the client will likely receive an error.
+
+                                Default: 5MB.
+                              format: uint
+                              minimum: 0.0
+                              nullable: true
+                              type: integer
+                            multipart_max_concurrent_uploads:
+                              description: |-
+                                Maximum number of concurrent UploadPart requests per MultipartUpload.
+
+                                Default: 10.
+                              format: uint
+                              minimum: 0.0
+                              nullable: true
+                              type: integer
+                            region:
+                              default: ''
+                              description: S3 region. Usually us-east-1, us-west-2, af-south-1, exc...
+                              type: string
+                            retry:
+                              default:
+                                delay: 0.0
+                                jitter: 0.0
+                                max_retries: 0
+                                retry_on_errors: null
+                              description: Retry configuration to use when a network request fails.
+                              properties:
+                                delay:
+                                  default: 0.0
+                                  description: Delay in seconds for exponential back off.
+                                  format: float
+                                  type: number
+                                jitter:
+                                  default: 0.0
+                                  description: 'Amount of jitter to add as a percentage in decimal form. This will change the formula like: ```haskell random( (2 ^ {attempt_number}) * {delay} * (1 - (jitter / 2)), (2 ^ {attempt_number}) * {delay} * (1 + (jitter / 2)), ) ```'
+                                  format: float
+                                  type: number
+                                max_retries:
+                                  default: 0
+                                  description: Maximum number of retries until retrying stops. Setting this to zero will always attempt 1 time, but not retry.
+                                  format: uint
+                                  minimum: 0.0
+                                  type: integer
+                                retry_on_errors:
+                                  description: A list of error codes to retry on, if this is not set then the default error codes to retry on are used.  These default codes are the most likely to be non-permanent. - Unknown - Cancelled - DeadlineExceeded - ResourceExhausted - Aborted - Internal - Unavailable - DataLoss
+                                  items:
+                                    description: The possible error codes that might occur on an upstream request.
+                                    enum:
+                                    - Cancelled
+                                    - Unknown
+                                    - InvalidArgument
+                                    - DeadlineExceeded
+                                    - NotFound
+                                    - AlreadyExists
+                                    - PermissionDenied
+                                    - ResourceExhausted
+                                    - FailedPrecondition
+                                    - Aborted
+                                    - OutOfRange
+                                    - Unimplemented
+                                    - Internal
+                                    - Unavailable
+                                    - DataLoss
+                                    - Unauthenticated
+                                    type: string
+                                  nullable: true
+                                  type: array
+                              type: object
+                          type: object
+                        shard:
+                          description: |-
+                            Shards the data to multiple stores. This is useful for cases when you want to distribute the load across multiple stores. The digest hash is used to determine which store to send the data to.
+
+                            **Example JSON Config:** ```json "shard": { "stores": [ "memory": { "eviction_policy": { // 10mb. "max_bytes": 10000000 }, "weight": 1 } ] } ```
+                          properties:
+                            stores:
+                              description: Stores to shard the data to.
+                              items:
+                                description: Configuration for an individual shard of the store.
+                                properties:
+                                  store:
+                                    description: Store to shard the data to.
+                                    type: string
+                                  weight:
+                                    description: |-
+                                      The weight of the store. This is used to determine how much data should be sent to the store. The actual percentage is the sum of all the store's weights divided by the individual store's weight.
+
+                                      Default: 1
+                                    format: uint32
+                                    minimum: 0.0
+                                    nullable: true
+                                    type: integer
+                                required:
+                                - store
+                                type: object
+                              type: array
+                          required:
+                          - stores
+                          type: object
+                        sizePartitioning:
+                          description: |-
+                            Uses the size field of the digest to separate which store to send the data. This is useful for cases when you'd like to put small objects in one store and large objects in another store. This should only be used if the size field is the real size of the content, in other words, don't use on AC (Action Cache) stores. Any store where you can safely use VerifyStore.verify_size = true, this store should be safe to use (ie: CAS stores).
+
+                            **Example JSON Config:** ```json "size_partitioning": { "size": 134217728, // 128mib. "lower_store": { "memory": { "eviction_policy": { "max_bytes": "${NATIVELINK_CAS_MEMORY_CONTENT_LIMIT:-100000000}" } } }, "upper_store": { /// This store discards data larger than 128mib. "noop": {} } } ```
+                          properties:
+                            lower_store:
+                              description: Store to send data when object is < (less than) size.
+                              type: string
+                            size:
+                              description: Size to partition the data on.
+                              format: uint64
+                              minimum: 0.0
+                              type: integer
+                            upper_store:
+                              description: Store to send data when object is >= (less than eq) size.
+                              type: string
+                          required:
+                          - lower_store
+                          - size
+                          - upper_store
+                          type: object
+                        verify:
+                          description: |-
+                            Verify store is used to apply verifications to an underlying store implementation. It is strongly encouraged to validate as much data as you can before accepting data from a client, failing to do so may cause the data in the store to be populated with invalid data causing all kinds of problems.
+
+                            The suggested configuration is to have the CAS validate the hash and size and the AC validate nothing.
+
+                            **Example JSON Config:** ```json "verify": { "memory": { "eviction_policy": { "max_bytes": 500000000 // 500mb. } }, "verify_size": true, "hash_verification_function": "sha256" } ```
+                          properties:
+                            backend:
+                              description: The underlying store wrap around. All content will first flow through self before forwarding to backend. In the event there is an error detected in self, the connection to the backend will be terminated, and early termination should always cause updates to fail on the backend.
+                              type: string
+                            verify_hash:
+                              default: false
+                              description: |-
+                                If the data should be hashed and verify that the key matches the computed hash. The hash function is automatically determined based request and if not set will use the global default.
+
+                                This should be set to None for AC, but hashing function like `sha256` for CAS stores.
+                              type: boolean
+                            verify_size:
+                              default: false
+                              description: |-
+                                If set the store will verify the size of the data before accepting an upload of data.
+
+                                This should be set to false for AC, but true for CAS stores.
+                              type: boolean
+                          required:
+                          - backend
+                          type: object
+                      required:
+                      - name
+                      type: object
+                    type: array
+                  workers:
+                    description: Worker configurations used to execute jobs.
+                    items:
+                      oneOf:
+                      - required:
+                        - local
+                      properties:
+                        local:
+                          description: A worker type that executes jobs locally on this machine.
+                          properties:
+                            additional_environment:
+                              additionalProperties:
+                                oneOf:
+                                - required:
+                                  - property
+                                - required:
+                                  - value
+                                - required:
+                                  - timeout_millis
+                                - required:
+                                  - side_channel_file
+                                - required:
+                                  - action_directory
+                                properties:
+                                  action_directory:
+                                    description: |-
+                                      A "root" directory for the action. This directory can be used to store temporary files that are not needed after the action has completed. This directory will be purged after the action has completed.
+
+                                      For example: If an action writes temporary data to a path but nativelink should clean up this path after the job has executed, you may create any directory under the path provided in this variable. A common pattern would be to use `entrypoint` to set a shell script that reads this variable, `mkdir $ENV_VAR_NAME/tmp` and `export TMPDIR=$ENV_VAR_NAME/tmp`. Another example might be to bind-mount the `/tmp` path in a container to this path in `entrypoint`.
+                                    type: string
+                                  property:
+                                    description: The name of the platform property in the action to get the value from.
+                                    type: string
+                                  side_channel_file:
+                                    description: |-
+                                      A special file path will be provided that can be used to communicate with the parent process about out-of-band information. This file will be read after the command has finished executing. Based on the contents of the file, the behavior of the result may be modified.
+
+                                      The format of the file contents should be json with the following schema: { // If set the command will be considered a failure. // May be one of the following static strings: // "timeout": Will Consider this task to be a timeout. "failure": "timeout", }
+
+                                      All fields are optional, file does not need to be created and may be empty.
+                                    type: string
+                                  timeout_millis:
+                                    description: The max amount of time in milliseconds the command is allowed to run (requested by the client).
+                                    type: string
+                                  value:
+                                    description: The raw value to set.
+                                    type: string
+                                type: object
+                              description: An optional mapping of environment names to set for the execution as well as those specified in the action itself.  If set, will set each key as an environment variable before executing the job with the value of the environment variable being the value of the property of the action being executed of that name or the fixed value.
+                              nullable: true
+                              type: object
+                            cas_fast_slow_store:
+                              description: Underlying CAS store that the worker will use to download CAS artifacts. This store must be a `FastSlowStore`. The `fast` store must be a `FileSystemStore` because it will use hardlinks when building out the files instead of copying the files. The slow store must eventually resolve to the same store the scheduler/client uses to send job requests.
+                              type: string
+                            entrypoint:
+                              default: ''
+                              description: 'The command to execute on every execution request. This will be parsed as a command + arguments (not shell). Example: "run.sh" and a job with command: "sleep 5" will result in a command like: "run.sh sleep 5". Default: {Use the command from the job request}.'
+                              type: string
+                            experimental_precondition_script:
+                              description: An optional script to run before every action is processed on the worker. The value should be the full path to the script to execute and will pause all actions on the worker if it returns an exit code other than 0. If not set, then the worker will never pause and will continue to accept jobs according to the scheduler configuration. This is useful, for example, if the worker should not take any more actions until there is enough resource available on the machine to handle them.
+                              nullable: true
+                              type: string
+                            max_action_timeout:
+                              default: 0
+                              description: |-
+                                The maximum time an action is allowed to run. If a task requests for a timeout longer than this time limit, the task will be rejected. Value in seconds.
+
+                                Default: 1200 (seconds / 20 mins)
+                              format: uint
+                              minimum: 0.0
+                              type: integer
+                            name:
+                              default: ''
+                              description: 'Name of the worker. This is give a more friendly name to a worker for logging and metric publishing. Default: {Index position in the workers list}'
+                              type: string
+                            platform_properties:
+                              additionalProperties:
+                                oneOf:
+                                - required:
+                                  - values
+                                - required:
+                                  - query_cmd
+                                properties:
+                                  query_cmd:
+                                    description: A dynamic configuration. The string will be executed as a command (not sell) and will be split by "\n" (new line character).
+                                    type: string
+                                  values:
+                                    description: 'List of static values. Note: Generally there should only ever be 1 value, but if the platform property key is PropertyType::Priority it may have more than one value.'
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              description: Properties of this worker. This configuration will be sent to the scheduler and used to tell the scheduler to restrict what should be executed on this worker.
+                              type: object
+                            timeout_handled_externally:
+                              default: false
+                              description: |-
+                                If timeout is handled in `entrypoint` or another wrapper script. If set to true NativeLink will not honor the timeout the action requested and instead will always force kill the action after max_action_timeout has been reached. If this is set to false, the smaller value of the action's timeout and max_action_timeout will be used to which NativeLink will kill the action.
+
+                                The real timeout can be received via an environment variable set in: `EnvironmentSource::TimeoutMillis`.
+
+                                Example on where this is useful: `entrypoint` launches the action inside a docker container, but the docker container may need to be downloaded. Thus the timer should not start until the docker container has started executing the action. In this case, action will likely be wrapped in another program, like `timeout` and propagate timeouts via `EnvironmentSource::SideChannelFile`.
+
+                                Default: false (NativeLink fully handles timeouts)
+                              type: boolean
+                            upload_action_result:
+                              default:
+                                ac_store: null
+                                failure_message_template: ''
+                                historical_results_store: null
+                                success_message_template: ''
+                                upload_ac_results_strategy: success_only
+                              description: Configuration for uploading action results.
+                              properties:
+                                ac_store:
+                                  description: 'Underlying AC store that the worker will use to publish execution results into. Objects placed in this store should be reachable from the scheduler/client-cas after they have finished updating. Default: {No uploading is done}'
+                                  nullable: true
+                                  type: string
+                                failure_message_template:
+                                  default: ''
+                                  description: |-
+                                    Same as `success_message_template` but for failure case.
+
+                                    An example that is fully compatible with `bb_browser` is: <https://example.com/my-instance-name-here/blobs/{digest_function}/historical_execute_response/{historical_results_hash}-{historical_results_size}/>
+
+                                    Default: "" (no message)
+                                  type: string
+                                historical_results_store:
+                                  description: |-
+                                    Store to upload historical results to. This should be a CAS store if set.
+
+                                    Default: {CAS store of parent}
+                                  nullable: true
+                                  type: string
+                                success_message_template:
+                                  default: ''
+                                  description: |-
+                                    Template to use for the `ExecuteResponse.message` property. This message is attached to the response before it is sent to the client. The following special variables are supported: - {digest_function} - Digest function used to calculate the action digest. - {action_digest_hash} - Action digest hash. - {action_digest_size} - Action digest size. - {historical_results_hash} - HistoricalExecuteResponse digest hash. - {historical_results_size} - HistoricalExecuteResponse digest size.
+
+                                    A common use case of this is to provide a link to the web page that contains more useful information for the user.
+
+                                    An example that is fully compatible with `bb_browser` is: <https://example.com/my-instance-name-here/blobs/{digest_function}/action/{action_digest_hash}-{action_digest_size}/>
+
+                                    Default: "" (no message)
+                                  type: string
+                                upload_ac_results_strategy:
+                                  default: success_only
+                                  description: |-
+                                    In which situations should the results be published to the ac_store, if set to SuccessOnly then only results with an exit code of 0 will be uploaded, if set to Everything all completed results will be uploaded.
+
+                                    Default: UploadCacheResultsStrategy::SuccessOnly
+                                  enum:
+                                  - success_only
+                                  - never
+                                  - everything
+                                  - failures_only
+                                  type: string
+                                upload_historical_results_strategy:
+                                  description: |-
+                                    In which situations should the results be published to the historical CAS. The historical CAS is where failures are published. These messages conform to the CAS key-value lookup format and are always a `HistoricalExecuteResponse` serialized message.
+
+                                    Default: UploadCacheResultsStrategy::FailuresOnly
+                                  enum:
+                                  - success_only
+                                  - never
+                                  - everything
+                                  - failures_only
+                                  nullable: true
+                                  type: string
+                              type: object
+                            work_directory:
+                              description: The directory work jobs will be executed from. This directory will be fully managed by the worker service and will be purged on startup. This directory and the directory referenced in local_filesystem_store_ref's stores::FilesystemStore::content_path must be on the same filesystem. Hardlinks will be used when placing files that are accessible to the jobs that are sourced from local_filesystem_store_ref's content_path.
+                              type: string
+                            worker_api_endpoint:
+                              description: Endpoint which the worker will connect to the scheduler's WorkerApiService.
+                              properties:
+                                timeout:
+                                  description: 'Timeout in seconds that a request should take. Default: 5 (seconds)'
+                                  format: float
+                                  nullable: true
+                                  type: number
+                                tls_config:
+                                  description: The TLS configuration to use to connect to the endpoint.
+                                  nullable: true
+                                  properties:
+                                    ca_file:
+                                      description: Path to the certificate authority to use to validate the remote.
+                                      type: string
+                                    cert_file:
+                                      description: Path to the certificate file for client authentication.
+                                      nullable: true
+                                      type: string
+                                    key_file:
+                                      description: Path to the private key file for client authentication.
+                                      nullable: true
+                                      type: string
+                                  required:
+                                  - ca_file
+                                  type: object
+                                uri:
+                                  description: URI of the endpoint.
+                                  type: string
+                              required:
+                              - uri
+                              type: object
+                          required:
+                          - cas_fast_slow_store
+                          - platform_properties
+                          - work_directory
+                          - worker_api_endpoint
+                          type: object
+                      type: object
+                    nullable: true
+                    type: array
+                required:
+                - servers
+                - stores
+                type: object
+              image:
+                description: The container image to use for the NativeLink Pod
+                type: string
+              replicas:
+                default: 1
+                description: Number of replicas
+                format: int32
+                type: integer
+              runtime:
+                default:
+                  args: []
+                  env: {}
+                  working_dir: null
+                description: 'TODO(aaronmondal): Instead of these values, consider a "deployment" field that imports the K8s Deployment schema. Optional overrides for process management'
+                properties:
+                  args:
+                    default: []
+                    description: Arguments to pass to the NativeLink executable
+                    items:
+                      type: string
+                    type: array
+                  env:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    description: Environment variables to set for the process
+                    type: object
+                  working_dir:
+                    description: Working directory for the process
+                    nullable: true
+                    type: string
+                type: object
+            required:
+            - config
+            - image
+            type: object
+          status:
+            nullable: true
+            properties:
+              active_ports:
+                additionalProperties:
+                  format: uint16
+                  minimum: 0.0
+                  type: integer
+                description: Port mappings for active services
+                type: object
+              error:
+                description: Any error message if NativeLink failed to start/run
+                nullable: true
+                type: string
+              last_started:
+                description: Last time NativeLink was started
+                nullable: true
+                type: string
+              running:
+                description: Whether NativeLink is currently running
+                type: boolean
+            required:
+            - active_ports
+            - running
+            type: object
+        required:
+        - spec
+        title: NativeLink
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

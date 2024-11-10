@@ -810,16 +810,16 @@ impl RunningActionImpl {
                         .get(property)
                         .map_or_else(|| Cow::Borrowed(""), |v| Cow::Borrowed(v.as_str())),
                     EnvironmentSource::value(value) => Cow::Borrowed(value.as_str()),
-                    EnvironmentSource::timeout_millis => {
+                    EnvironmentSource::timeout_millis(_) => {
                         Cow::Owned(requested_timeout.as_millis().to_string())
                     }
-                    EnvironmentSource::side_channel_file => {
+                    EnvironmentSource::side_channel_file(_) => {
                         let file_cow =
                             format!("{}/{}", self.action_directory, Uuid::new_v4().simple());
                         maybe_side_channel_file = Some(Cow::Owned(file_cow.clone().into()));
                         Cow::Owned(file_cow)
                     }
-                    EnvironmentSource::action_directory => {
+                    EnvironmentSource::action_directory(_) => {
                         Cow::Borrowed(self.action_directory.as_str())
                     }
                 };

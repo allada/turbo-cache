@@ -1,23 +1,27 @@
 {
-  "stores": {
-    "CAS_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "CAS_MAIN_STORE",
       "verify": {
         "backend": {
+          "name": "cas-dedup",
           "dedup": {
             "index_store": {
-              "fast_slow": {
+              "name": "cas-index",
+              "fastSlow": {
                 "fast": {
+                  "name": "cas-index-fast",
                   "filesystem": {
                     "content_path": "/tmp/nativelink/data/content_path-index",
                     "temp_path": "/tmp/nativelink/data/tmp_path-index",
                     "eviction_policy": {
-                      // 500mb.
-                      "max_bytes": 500000000,
+                      "max_bytes": "500Mb",
                     }
                   }
                 },
                 "slow": {
-                  "experimental_s3_store": {
+                  "name": "cas-index-slow",
+                  "s3": {
                     "region": "eu-north-1",
                     "bucket": "crossplane-bucket-af79aeca9",
                     "key_prefix": "test-prefix-index/",
@@ -26,30 +30,32 @@
                       "delay": 0.3,
                       "jitter": 0.5,
                     },
-                    "additional_max_concurrent_requests": 10
                   }
                 }
               }
             },
             "content_store": {
+              "name": "cas-content",
               "compression": {
                 "compression_algorithm": {
                   "lz4": {}
                 },
                 "backend": {
-                  "fast_slow": {
+                  "name": "cas-content-backend",
+                  "fastSlow": {
                     "fast": {
+                      "name": "cas-content-backend-fast",
                       "filesystem": {
                         "content_path": "/tmp/nativelink/data/content_path-content",
                         "temp_path": "/tmp/nativelink/data/tmp_path-content",
                         "eviction_policy": {
-                          // 2gb.
-                          "max_bytes": 2000000000,
+                          "max_bytes": "2Gb",
                         }
                       }
                     },
                     "slow": {
-                      "experimental_s3_store": {
+                      "name": "cas-content-backend-slow",
+                      "s3": {
                         "region": "eu-north-1",
                         "bucket": "crossplane-bucket-af79aeca9",
                         "key_prefix": "test-prefix-dedup-cas/",
@@ -58,7 +64,6 @@
                           "delay": 0.3,
                           "jitter": 0.5,
                         },
-                        "additional_max_concurrent_requests": 10
                       }
                     }
                   }
@@ -68,18 +73,18 @@
           }
         },
         "verify_size": true,
-        "hash_verification_function": "sha256"
+        "verify_hash": true
       }
-    },
-    "AC_MAIN_STORE": {
-      "fast_slow": {
+    }, {
+      "name": "AC_MAIN_STORE",
+      "fastSlow": {
         "fast": {
+          "name": "ac-fast",
           "memory": {
             "eviction_policy": {
-              // 100mb.
-              "max_bytes": 100000000,
+              "max_bytes": "100Mb",
             }
-          },
+          }, // TODO(aaronmondal): Broken??
           "filesystem": {
             "content_path": "/tmp/nativelink/data/content_path-ac",
             "temp_path": "/tmp/nativelink/data/tmp_path-ac",
@@ -90,7 +95,8 @@
           }
         },
         "slow": {
-          "experimental_s3_store": {
+          "name": "ac-slow",
+          "s3": {
             "region": "eu-north-1",
             "bucket": "crossplane-bucket-af79aeca9",
             "key_prefix": "test-prefix-ac/",
@@ -99,14 +105,14 @@
               "delay": 0.3,
               "jitter": 0.5,
             },
-            "additional_max_concurrent_requests": 10
           }
         }
       }
     }
-  },
-  "schedulers": {
-    "MAIN_SCHEDULER": {
+  ],
+  "schedulers": [
+    {
+      "name": "MAIN_SCHEDULER",
       "simple": {
         "supported_platform_properties": {
           "cpu_count": "minimum",
@@ -127,7 +133,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {

@@ -70,7 +70,7 @@ pub struct GrpcStore {
 }
 
 impl GrpcStore {
-    pub async fn new(config: &nativelink_config::stores::GrpcStore) -> Result<Arc<Self>, Error> {
+    pub async fn new(config: &nativelink_config::stores::GrpcSpec) -> Result<Arc<Self>, Error> {
         let jitter_amt = config.retry.jitter;
         Self::new_with_jitter(
             config,
@@ -87,7 +87,7 @@ impl GrpcStore {
     }
 
     pub async fn new_with_jitter(
-        config: &nativelink_config::stores::GrpcStore,
+        config: &nativelink_config::stores::GrpcSpec,
         jitter_fn: Box<dyn Fn(Duration) -> Duration + Send + Sync>,
     ) -> Result<Arc<Self>, Error> {
         error_if!(

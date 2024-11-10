@@ -46,7 +46,7 @@ pub struct ShardStore {
 
 impl ShardStore {
     pub fn new(
-        config: &nativelink_config::stores::ShardStore,
+        config: &nativelink_config::stores::ShardSpec,
         stores: Vec<Store>,
     ) -> Result<Arc<Self>, Error> {
         error_if!(
