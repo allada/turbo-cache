@@ -4,7 +4,7 @@ version = "0.5.3"
 edition = "2021"
 autobins = false
 autoexamples = false
-autotests = false
+autotests = true
 autobenches = false
 
 [dependencies]
@@ -14,8 +14,8 @@ fred = { version = "9.2.1", default-features = false, features = [
   "enable-rustls-ring",
 ] }
 hex = { version = "0.4.3", default-features = false }
-prost = { version = "0.13.3", default-features = false }
+prost = { version = "0.13.3", features = ["std"], default-features = false }
 prost-types = { version = "0.13.3", default-features = false }
-serde = { version = "1.0.210", default-features = false }
+serde = { version = "1.0.210", features = ["derive"], default-features = false }
 tokio = { version = "1.40.0", features = ["fs", "rt-multi-thread", "signal", "io-util"], default-features = false }
-tonic = { version = "0.12.3", features = ["transport", "tls"], default-features = false }
+tonic = { version = "0.12.3", features = ["transport"], default-features = false }

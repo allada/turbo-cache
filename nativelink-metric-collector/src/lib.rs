@@ -16,6 +16,6 @@ pub use otel_exporter::otel_export;
 pub use tracing_layers::MetricsCollectorLayer;
 
 mod metrics_collection;
-mod metrics_visitors;
+pub mod metrics_visitors;
 mod otel_exporter;
 mod tracing_layers;
