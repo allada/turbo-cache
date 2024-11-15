@@ -22,4 +22,3 @@ nixos.bazelrc
 rust-project.json
 darwin.bazelrc
 nativelink.bazelrc
-Cargo.lock
