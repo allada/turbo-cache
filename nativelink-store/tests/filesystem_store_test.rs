@@ -146,10 +146,6 @@ impl<Hooks: FileEntryHooks + 'static + Sync + Send> LenEntry for TestFileEntry<H
         self.inner.as_ref().unwrap().is_empty()
     }
 
-    async fn touch(&self) -> bool {
-        self.inner.as_ref().unwrap().touch().await
-    }
-
     async fn unref(&self) {
         Hooks::on_unref(self);
         self.inner.as_ref().unwrap().unref().await;
@@ -600,53 +596,6 @@ async fn file_gets_cleans_up_on_cache_eviction() -> Result<(), Error> {
             panic!("No files should exist in temp directory, found: {path:?}");
         }
     }
-
-    Ok(())
-}
-
-#[serial]
-#[nativelink_test]
-async fn atime_updates_on_get_part_test() -> Result<(), Error> {
-    let digest1 = DigestInfo::try_new(HASH1, VALUE1.len())?;
-
-    let store = Box::pin(
-        FilesystemStore::<FileEntryImpl>::new(&nativelink_config::stores::FilesystemStore {
-            content_path: make_temp_path("content_path"),
-            temp_path: make_temp_path("temp_path"),
-            eviction_policy: None,
-            ..Default::default()
-        })
-        .await?,
-    );
-    // Insert data into store.
-    store.update_oneshot(digest1, VALUE1.into()).await?;
-
-    let file_entry = store.get_file_entry_for_digest(&digest1).await?;
-    file_entry
-        .get_file_path_locked(move |path| async move {
-            // Set atime to along time ago.
-            set_file_atime(&path, FileTime::from_system_time(SystemTime::UNIX_EPOCH))?;
-
-            // Check to ensure it was set to zero from previous command.
-            assert_eq!(
-                fs::metadata(&path).await?.accessed()?,
-                SystemTime::UNIX_EPOCH
-            );
-            Ok(())
-        })
-        .await?;
-
-    // Now touch digest1.
-    let data = store.get_part_unchunked(digest1, 0, None).await?;
-    assert_eq!(data, VALUE1.as_bytes());
-
-    file_entry
-        .get_file_path_locked(move |path| async move {
-            // Ensure it was updated.
-            assert!(fs::metadata(&path).await?.accessed()? > SystemTime::UNIX_EPOCH);
-            Ok(())
-        })
-        .await?;
 
     Ok(())
 }
@@ -1232,41 +1181,6 @@ async fn update_file_future_drops_before_rename() -> Result<(), Error> {
             Ok(())
         })
         .await?;
-
-    Ok(())
-}
-
-#[serial]
-#[nativelink_test]
-async fn deleted_file_removed_from_store() -> Result<(), Error> {
-    let digest = DigestInfo::try_new(HASH1, VALUE1.len())?;
-    let content_path = make_temp_path("content_path");
-    let temp_path = make_temp_path("temp_path");
-
-    let store = Box::pin(
-        FilesystemStore::<FileEntryImpl>::new_with_timeout_and_rename_fn(
-            &nativelink_config::stores::FilesystemStore {
-                content_path: content_path.clone(),
-                temp_path: temp_path.clone(),
-                read_buffer_size: 1,
-                ..Default::default()
-            },
-            |_| sleep(Duration::ZERO),
-            |from, to| std::fs::rename(from, to),
-        )
-        .await?,
-    );
-
-    store.update_oneshot(digest, VALUE1.into()).await?;
-
-    let stored_file_path = OsString::from(format!("{content_path}/{digest}"));
-    std::fs::remove_file(stored_file_path)?;
-
-    let digest_result = store
-        .has(digest)
-        .await
-        .err_tip(|| "Failed to execute has")?;
-    assert!(digest_result.is_none());
 
     Ok(())
 }

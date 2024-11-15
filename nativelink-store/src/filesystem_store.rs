@@ -23,11 +23,11 @@ use std::time::{Duration, SystemTime};
 use async_lock::RwLock;
 use async_trait::async_trait;
 use bytes::BytesMut;
-use filetime::{set_file_atime, FileTime};
 use futures::stream::{StreamExt, TryStreamExt};
 use futures::{Future, TryFutureExt};
 use nativelink_error::{make_err, make_input_err, Code, Error, ResultExt};
 use nativelink_metric::MetricsComponent;
+use nativelink_util::background_spawn;
 use nativelink_util::buf_channel::{
     make_buf_channel_pair, DropCloserReadHalf, DropCloserWriteHalf,
 };
@@ -35,7 +35,6 @@ use nativelink_util::common::{fs, DigestInfo};
 use nativelink_util::evicting_map::{EvictingMap, LenEntry};
 use nativelink_util::health_utils::{HealthRegistryBuilder, HealthStatus, HealthStatusIndicator};
 use nativelink_util::store_trait::{StoreDriver, StoreKey, StoreOptimizations, UploadSizeInfo};
-use nativelink_util::{background_spawn, spawn_blocking};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, SeekFrom};
 use tokio::time::{sleep, timeout, Sleep};
 use tokio_stream::wrappers::ReadDirStream;
@@ -320,33 +319,6 @@ impl LenEntry for FileEntryImpl {
         self.data_size == 0
     }
 
-    #[inline]
-    async fn touch(&self) -> bool {
-        let result = self
-            .get_file_path_locked(move |full_content_path| async move {
-                let full_content_path = full_content_path.clone();
-                spawn_blocking!("filesystem_touch_set_mtime", move || {
-                    set_file_atime(&full_content_path, FileTime::now()).err_tip(|| {
-                        format!("Failed to touch file in filesystem store {full_content_path:?}")
-                    })
-                })
-                .await
-                .map_err(|e| {
-                    make_err!(
-                        Code::Internal,
-                        "Failed to change atime of file due to spawn failing {:?}",
-                        e
-                    )
-                })?
-            })
-            .await;
-        if let Err(err) = result {
-            event!(Level::ERROR, ?err, "Failed to touch file",);
-            return false;
-        }
-        true
-    }
-
     // unref() only triggers when an item is removed from the eviction_map. It is possible
     // that another place in code has a reference to `FileEntryImpl` and may later read the
     // file. To support this edge case, we first move the file to a temp file and point
@@ -404,17 +376,17 @@ const SIMULTANEOUS_METADATA_READS: usize = 200;
 
 async fn add_files_to_cache<Fe: FileEntry>(
     evicting_map: &EvictingMap<DigestInfo, Arc<Fe>, SystemTime>,
-    anchor_time: &SystemTime,
+    anchor_time: SystemTime,
     shared_context: &Arc<SharedContext>,
     block_size: u64,
 ) -> Result<(), Error> {
     async fn process_entry<Fe: FileEntry>(
         evicting_map: &EvictingMap<DigestInfo, Arc<Fe>, SystemTime>,
         file_name: &str,
-        atime: SystemTime,
+        filetime: SystemTime,
         data_size: u64,
         block_size: u64,
-        anchor_time: &SystemTime,
+        anchor_time: SystemTime,
         shared_context: &Arc<SharedContext>,
     ) -> Result<(), Error> {
         let digest = digest_from_filename(file_name)?;
@@ -429,7 +401,7 @@ async fn add_files_to_cache<Fe: FileEntry>(
             }),
         );
         let time_since_anchor = anchor_time
-            .duration_since(atime)
+            .duration_since(filetime)
             .map_err(|_| make_input_err!("File access time newer than now"))?;
         evicting_map
             .insert_with_time(
@@ -456,20 +428,21 @@ async fn add_files_to_cache<Fe: FileEntry>(
                     .metadata()
                     .await
                     .err_tip(|| "Failed to get metadata in filesystem store")?;
-                let atime = match metadata.accessed() {
+                let filetime = match metadata.accessed() {
                     Ok(atime) => atime,
-                    Err(err) => {
-                        panic!(
-                            "{}{}{} : {} {:?}",
-                            "It appears this filesystem does not support access time. ",
-                            "Please configure this program to run on a drive that supports ",
-                            "atime",
-                            file_name,
-                            err
-                        );
+                    Err(_) => {
+                        if let Ok(mtime) = metadata.modified() {
+                            mtime
+                        } else {
+                            anchor_time
+                        }
                     }
                 };
-                Result::<(String, SystemTime, u64), Error>::Ok((file_name, atime, metadata.len()))
+                Result::<(String, SystemTime, u64), Error>::Ok((
+                    file_name,
+                    filetime,
+                    metadata.len(),
+                ))
             })
             .buffer_unordered(SIMULTANEOUS_METADATA_READS)
             .try_collect()
@@ -477,11 +450,11 @@ async fn add_files_to_cache<Fe: FileEntry>(
     };
 
     file_infos.sort_by(|a, b| a.1.cmp(&b.1));
-    for (file_name, atime, data_size) in file_infos {
+    for (file_name, filetime, data_size) in file_infos {
         let result = process_entry(
             evicting_map,
             &file_name,
-            atime,
+            filetime,
             data_size,
             block_size,
             anchor_time,
@@ -571,7 +544,7 @@ impl<Fe: FileEntry> FilesystemStore<Fe> {
         } else {
             config.block_size
         };
-        add_files_to_cache(evicting_map.as_ref(), &now, &shared_context, block_size).await?;
+        add_files_to_cache(evicting_map.as_ref(), now, &shared_context, block_size).await?;
         prune_temp_path(&shared_context.temp_path).await?;
 
         let read_buffer_size = if config.read_buffer_size == 0 {

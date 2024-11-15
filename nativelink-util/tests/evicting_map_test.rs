@@ -356,11 +356,6 @@ async fn unref_called_on_replace() -> Result<(), Error> {
             unreachable!("We are not testing this functionality");
         }
 
-        async fn touch(&self) -> bool {
-            // Do nothing. We are not testing this functionality.
-            true
-        }
-
         async fn unref(&self) {
             self.unref_called.store(true, Ordering::Relaxed);
         }
