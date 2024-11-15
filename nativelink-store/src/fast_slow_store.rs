@@ -53,7 +53,7 @@ pub struct FastSlowStore {
 
 impl FastSlowStore {
     pub fn new(
-        _config: &nativelink_config::stores::FastSlowStore,
+        _config: &nativelink_config::stores::FastSlowSpec,
         fast_store: Store,
         slow_store: Store,
     ) -> Arc<Self> {

@@ -142,7 +142,7 @@ pub struct TlsConnector {
 impl TlsConnector {
     #[must_use]
     pub fn new(
-        config: &nativelink_config::stores::S3Store,
+        config: &nativelink_config::stores::S3Spec,
         jitter_fn: Arc<dyn Fn(Duration) -> Duration + Send + Sync>,
     ) -> Self {
         let connector_with_roots = hyper_rustls::HttpsConnectorBuilder::new().with_webpki_roots();
@@ -261,7 +261,7 @@ where
     NowFn: Fn() -> I + Send + Sync + Unpin + 'static,
 {
     pub async fn new(
-        config: &nativelink_config::stores::S3Store,
+        config: &nativelink_config::stores::S3Spec,
         now_fn: NowFn,
     ) -> Result<Arc<Self>, Error> {
         let jitter_amt = config.retry.jitter;
@@ -299,7 +299,7 @@ where
     }
 
     pub fn new_with_client_and_jitter(
-        config: &nativelink_config::stores::S3Store,
+        config: &nativelink_config::stores::S3Spec,
         s3_client: Client,
         jitter_fn: Arc<dyn Fn(Duration) -> Duration + Send + Sync>,
         now_fn: NowFn,

@@ -27,6 +27,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use nativelink_config::cas_server::EnvironmentSource;
+use nativelink_config::stores::{MemorySpec, StoreRef};
 use nativelink_error::{make_input_err, Code, Error, ResultExt};
 use nativelink_macro::nativelink_test;
 use nativelink_proto::build::bazel::remote::execution::v2::command::EnvironmentVariable;
@@ -88,20 +89,20 @@ async fn setup_stores() -> Result<
     ),
     Error,
 > {
-    let fast_config = nativelink_config::stores::FilesystemStore {
+    let fast_spec = nativelink_config::stores::FilesystemSpec {
         content_path: make_temp_path("content_path"),
         temp_path: make_temp_path("temp_path"),
         eviction_policy: None,
         ..Default::default()
     };
-    let slow_config = nativelink_config::stores::MemoryStore::default();
-    let fast_store = FilesystemStore::new(&fast_config).await?;
-    let slow_store = MemoryStore::new(&slow_config);
-    let ac_store = MemoryStore::new(&slow_config);
+    let slow_spec = nativelink_config::stores::MemorySpec::default();
+    let fast_store = FilesystemStore::new(&fast_spec).await?;
+    let slow_store = MemoryStore::new(&slow_spec);
+    let ac_store = MemoryStore::new(&slow_spec);
     let cas_store = FastSlowStore::new(
-        &nativelink_config::stores::FastSlowStore {
-            fast: nativelink_config::stores::StoreConfig::filesystem(fast_config),
-            slow: nativelink_config::stores::StoreConfig::memory(slow_config),
+        &nativelink_config::stores::FastSlowSpec {
+            fast: StoreRef::new("fast", MemorySpec::default()),
+            slow: StoreRef::new("slow", MemorySpec::default()),
         },
         Store::new(fast_store.clone()),
         Store::new(slow_store.clone()),
@@ -1657,7 +1658,7 @@ exit 0
                     ),
                     (
                         "INNER_TIMEOUT".to_string(),
-                        EnvironmentSource::timeout_millis,
+                        EnvironmentSource::timeout_millis("unused".into()),
                     ),
                     (
                         "PATH".to_string(),
@@ -1816,7 +1817,7 @@ exit 1
                 entrypoint: Some(test_wrapper_script.into_string().unwrap()),
                 additional_environment: Some(HashMap::from([(
                     "SIDE_CHANNEL_FILE".to_string(),
-                    EnvironmentSource::side_channel_file,
+                    EnvironmentSource::side_channel_file(String::new()),
                 )])),
             },
             cas_store: cas_store.clone(),

@@ -14,7 +14,8 @@
 
 use std::collections::HashMap;
 
-use serde::Deserialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::schedulers::SchedulerConfig;
 use crate::serde_utils::{
@@ -33,7 +34,7 @@ pub type SchedulerRefName = String;
 pub type InstanceName = String;
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug, Default, Clone, Copy)]
+#[derive(Deserialize, Debug, Default, Clone, Copy, Serialize, JsonSchema)]
 pub enum HttpCompressionAlgorithm {
     /// No compression.
     #[default]
@@ -52,8 +53,7 @@ pub enum HttpCompressionAlgorithm {
 /// services with different compression settings that are served on
 /// different ports. Then configure the non-cloud clients to use one port
 /// and cloud-clients to use another.
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
 pub struct HttpCompressionConfig {
     /// The compression algorithm that the server will use when sending
     /// responses to clients. Enabling this will likely save a lot of
@@ -62,6 +62,7 @@ pub struct HttpCompressionConfig {
     /// see: <https://github.com/tracemachina/nativelink/issues/109>
     ///
     /// Default: `HttpCompressionAlgorithm::none`
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub send_compression_algorithm: Option<HttpCompressionAlgorithm>,
 
     /// The compression algorithm that the server will accept from clients.
@@ -75,8 +76,7 @@ pub struct HttpCompressionConfig {
     pub accepted_compression_algorithms: Vec<HttpCompressionAlgorithm>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
 pub struct AcStoreConfig {
     /// The store name referenced in the `stores` map in the main config.
     /// This store name referenced here may be reused multiple times.
@@ -89,8 +89,7 @@ pub struct AcStoreConfig {
     pub read_only: bool,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
 pub struct CasStoreConfig {
     /// The store name referenced in the `stores` map in the main config.
     /// This store name referenced here may be reused multiple times.
@@ -98,16 +97,14 @@ pub struct CasStoreConfig {
     pub cas_store: StoreRefName,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
 pub struct CapabilitiesRemoteExecutionConfig {
     /// Scheduler used to configure the capabilities of remote execution.
     #[serde(deserialize_with = "convert_string_with_shellexpand")]
     pub scheduler: SchedulerRefName,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
 pub struct CapabilitiesConfig {
     /// Configuration for remote execution capabilities.
     /// If not set the capabilities service will inform the client that remote
@@ -115,8 +112,7 @@ pub struct CapabilitiesConfig {
     pub remote_execution: Option<CapabilitiesRemoteExecutionConfig>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
 pub struct ExecutionConfig {
     /// The store name referenced in the `stores` map in the main config.
     /// This store name referenced here may be reused multiple times.
@@ -129,8 +125,7 @@ pub struct ExecutionConfig {
     pub scheduler: SchedulerRefName,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
 pub struct ByteStreamConfig {
     /// Name of the store in the "stores" configuration.
     pub cas_stores: HashMap<InstanceName, StoreRefName>,
@@ -159,16 +154,14 @@ pub struct ByteStreamConfig {
     pub persist_stream_on_disconnect_timeout: usize,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
 pub struct WorkerApiConfig {
     /// The scheduler name referenced in the `schedulers` map in the main config.
     #[serde(deserialize_with = "convert_string_with_shellexpand")]
     pub scheduler: SchedulerRefName,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct PrometheusConfig {
     /// Path to register prometheus metrics. If path is "/metrics", and your
     /// domain is "example.com", you can reach the endpoint with:
@@ -179,8 +172,7 @@ pub struct PrometheusConfig {
     pub path: String,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct AdminConfig {
     /// Path to register the admin API. If path is "/admin", and your
     /// domain is "example.com", you can reach the endpoint with:
@@ -191,8 +183,7 @@ pub struct AdminConfig {
     pub path: String,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct HealthConfig {
     /// Path to register the health status check. If path is "/status", and your
     /// domain is "example.com", you can reach the endpoint with:
@@ -203,7 +194,7 @@ pub struct HealthConfig {
     pub path: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct BepConfig {
     /// The store to publish build events to.
     /// The store name referenced in the `stores` map in the main config.
@@ -211,8 +202,7 @@ pub struct BepConfig {
     pub store: StoreRefName,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct ServicesConfig {
     /// The Content Addressable Storage (CAS) backend config.
     /// The key is the instance_name used in the protocol and the
@@ -265,8 +255,7 @@ pub struct ServicesConfig {
     pub health: Option<HealthConfig>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct TlsConfig {
     /// Path to the certificate file.
     #[serde(deserialize_with = "convert_string_with_shellexpand")]
@@ -293,8 +282,7 @@ pub struct TlsConfig {
 ///
 /// Note: All of these default to hyper's default values unless otherwise
 /// specified.
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct HttpServerConfig {
     /// Interval to send keep-alive pings via HTTP2.
     /// Note: This is in seconds.
@@ -361,14 +349,13 @@ pub struct HttpServerConfig {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub enum ListenerConfig {
     /// Listener for HTTP/HTTPS/HTTP2 sockets.
     http(HttpListener),
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct HttpListener {
     /// Address to listen on. Example: `127.0.0.1:8080` or `:8080` to listen
     /// to all IPs.
@@ -391,8 +378,7 @@ pub struct HttpListener {
     pub tls: Option<TlsConfig>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct ServerConfig {
     /// Name of the server. This is used to help identify the service
     /// for telemetry and logs.
@@ -409,7 +395,7 @@ pub struct ServerConfig {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub enum WorkerProperty {
     /// List of static values.
     /// Note: Generally there should only ever be 1 value, but if the platform
@@ -423,8 +409,7 @@ pub enum WorkerProperty {
 }
 
 /// Generic config for an endpoint and associated configs.
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct EndpointConfig {
     /// URI of the endpoint.
     #[serde(deserialize_with = "convert_string_with_shellexpand")]
@@ -439,7 +424,7 @@ pub struct EndpointConfig {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, Deserialize, Debug, Default)]
+#[derive(Copy, Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub enum UploadCacheResultsStrategy {
     /// Only upload action results with an exit code of 0.
     #[default]
@@ -455,8 +440,10 @@ pub enum UploadCacheResultsStrategy {
     failures_only,
 }
 
+// TODO(aaronmondal): Rework this to be compatible with schema generation while
+//                    providing sensible UX.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub enum EnvironmentSource {
     /// The name of the platform property in the action to get the value from.
     property(String),
@@ -466,7 +453,7 @@ pub enum EnvironmentSource {
 
     /// The max amount of time in milliseconds the command is allowed to run
     /// (requested by the client).
-    timeout_millis,
+    timeout_millis(String),
 
     /// A special file path will be provided that can be used to communicate
     /// with the parent process about out-of-band information. This file
@@ -484,7 +471,7 @@ pub enum EnvironmentSource {
     ///
     /// All fields are optional, file does not need to be created and may be
     /// empty.
-    side_channel_file,
+    side_channel_file(String),
 
     /// A "root" directory for the action. This directory can be used to
     /// store temporary files that are not needed after the action has
@@ -499,11 +486,10 @@ pub enum EnvironmentSource {
     /// variable, `mkdir $ENV_VAR_NAME/tmp` and `export TMPDIR=$ENV_VAR_NAME/tmp`.
     /// Another example might be to bind-mount the `/tmp` path in a container to
     /// this path in `entrypoint`.
-    action_directory,
+    action_directory(String),
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct UploadActionResultConfig {
     /// Underlying AC store that the worker will use to publish execution results
     /// into. Objects placed in this store should be reachable from the
@@ -531,6 +517,7 @@ pub struct UploadActionResultConfig {
     ///
     /// Default: UploadCacheResultsStrategy::FailuresOnly
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub upload_historical_results_strategy: Option<UploadCacheResultsStrategy>,
 
     /// Template to use for the `ExecuteResponse.message` property. This message
@@ -562,8 +549,7 @@ pub struct UploadActionResultConfig {
     pub failure_message_template: String,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, Default, JsonSchema, Serialize)]
 pub struct LocalWorkerConfig {
     /// Name of the worker. This is give a more friendly name to a worker for logging
     /// and metric publishing.
@@ -654,14 +640,13 @@ pub struct LocalWorkerConfig {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub enum WorkerConfig {
     /// A worker type that executes jobs locally on this machine.
     local(LocalWorkerConfig),
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize, Debug, Clone, Copy, JsonSchema, Serialize)]
 pub struct GlobalConfig {
     /// Maximum number of open files that can be opened at one time.
     /// This value is not strictly enforced, it is a best effort. Some internal libraries
@@ -720,12 +705,11 @@ pub struct GlobalConfig {
     pub default_digest_size_health_check: usize,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Deserialize, Debug, JsonSchema, Serialize)]
 pub struct CasConfig {
     /// List of stores available to use in this config.
     /// The keys can be used in other configs when needing to reference a store.
-    pub stores: HashMap<StoreRefName, StoreConfig>,
+    pub stores: Vec<StoreConfig>,
 
     /// Worker configurations used to execute jobs.
     pub workers: Option<Vec<WorkerConfig>>,
@@ -733,7 +717,7 @@ pub struct CasConfig {
     /// List of schedulers available to use in this config.
     /// The keys can be used in other configs when needing to reference a
     /// scheduler.
-    pub schedulers: Option<HashMap<SchedulerRefName, SchedulerConfig>>,
+    pub schedulers: Option<Vec<SchedulerConfig>>,
 
     /// Servers to setup for this process.
     pub servers: Vec<ServerConfig>,

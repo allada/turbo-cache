@@ -22,7 +22,9 @@ rust_library(
     deps = [
         "@crates//:byte-unit",
         "@crates//:humantime",
+        "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
         "@crates//:shellexpand",
     ],
 )

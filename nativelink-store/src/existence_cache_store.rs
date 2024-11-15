@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-use nativelink_config::stores::{EvictionPolicy, ExistenceCacheStore as ExistenceCacheStoreConfig};
+use nativelink_config::stores::{EvictionPolicy, ExistenceCacheSpec as ExistenceCacheStoreConfig};
 use nativelink_error::{error_if, Error, ResultExt};
 use nativelink_metric::MetricsComponent;
 use nativelink_util::buf_channel::{DropCloserReadHalf, DropCloserWriteHalf};

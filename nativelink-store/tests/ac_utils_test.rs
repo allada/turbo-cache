@@ -46,7 +46,7 @@ const HASH1_SIZE: i64 = 147;
 async fn upload_file_to_store_with_large_file() -> Result<(), Error> {
     let filepath = make_temp_path("test.txt").await;
     let expected_data = vec![0x88; 1024 * 1024]; // 1MB.
-    let store = MemoryStore::new(&nativelink_config::stores::MemoryStore::default());
+    let store = MemoryStore::new(&nativelink_config::stores::MemorySpec::default());
     let digest = DigestInfo::try_new(HASH1, HASH1_SIZE)?; // Dummy hash data.
     {
         // Write 1MB of 0x88s to the file.

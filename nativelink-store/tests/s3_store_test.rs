@@ -59,7 +59,7 @@ async fn simple_has_object_found() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -94,7 +94,7 @@ async fn simple_has_object_not_found() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -153,7 +153,7 @@ async fn simple_has_retries() -> Result<(), Error> {
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
 
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             retry: nativelink_config::stores::Retry {
                 max_retries: 1024,
@@ -205,7 +205,7 @@ async fn simple_update_ac() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -293,7 +293,7 @@ async fn simple_get_ac() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -338,7 +338,7 @@ async fn smoke_test_get_part() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -399,7 +399,7 @@ async fn get_part_simple_retries() -> Result<(), Error> {
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
 
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             retry: nativelink_config::stores::Retry {
                 max_retries: 1024,
@@ -530,7 +530,7 @@ async fn multipart_update_large_cas() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -570,7 +570,7 @@ async fn ensure_empty_string_in_stream_works_test() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -613,7 +613,7 @@ async fn get_part_is_zero_digest() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = Arc::new(S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -655,7 +655,7 @@ async fn has_with_results_on_zero_digests() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             ..Default::default()
         },
@@ -698,7 +698,7 @@ async fn has_with_expired_result() -> Result<(), Error> {
         .build();
     let s3_client = aws_sdk_s3::Client::from_conf(test_config);
     let store = S3Store::new_with_client_and_jitter(
-        &nativelink_config::stores::S3Store {
+        &nativelink_config::stores::S3Spec {
             bucket: BUCKET_NAME.to_string(),
             consider_expired_after_s: 2 * 24 * 60 * 60, // 2 days.
             ..Default::default()

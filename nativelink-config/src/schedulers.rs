@@ -14,24 +14,49 @@
 
 use std::collections::HashMap;
 
-use serde::Deserialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::serde_utils::{convert_duration_with_shellexpand, convert_numeric_with_shellexpand};
 use crate::stores::{GrpcEndpoint, Retry, StoreRefName};
 
-#[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug)]
-pub enum SchedulerConfig {
-    simple(SimpleScheduler),
-    grpc(GrpcScheduler),
-    cache_lookup(CacheLookupScheduler),
-    property_modifier(PropertyModifierScheduler),
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum SchedulerSpec {
+    Simple(SimpleSpec),
+    Grpc(GrpcSpec),
+    CacheLookup(CacheLookupSpec),
+    PropertyModifier(PropertyModifierSpec),
 }
+
+pub type SchedulerRefName = String;
+pub type SchedulerConfig = crate::NamedConfig<SchedulerSpec>;
+pub type SchedulerRef = crate::NamedRef<SchedulerSpec>;
+
+impl From<SchedulerRef> for SchedulerConfig {
+    fn from(scheduler_ref: SchedulerRef) -> Self {
+        match scheduler_ref {
+            SchedulerRef::Name(name) => SchedulerConfig {
+                name: name.clone(),
+                spec: todo!("TODO(aaronmondal): Implement RefScheduler"),
+            },
+            SchedulerRef::Spec(spec) => *spec,
+        }
+    }
+}
+
+crate::impl_from_spec!(
+    SchedulerSpec,
+    (Simple, SimpleSpec),
+    (Grpc, GrpcSpec),
+    (CacheLookup, CacheLookupSpec),
+    (PropertyModifier, PropertyModifierSpec),
+);
 
 /// When the scheduler matches tasks to workers that are capable of running
 /// the task, this value will be used to determine how the property is treated.
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, JsonSchema)]
 pub enum PropertyType {
     /// Requires the platform property to be a u64 and when the scheduler looks
     /// for appropriate worker nodes that are capable of executing the task,
@@ -56,7 +81,7 @@ pub enum PropertyType {
 /// on how to choose which worker should run the job when multiple
 /// workers are able to run the task.
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, Deserialize, Debug, Default)]
+#[derive(Copy, Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
 pub enum WorkerAllocationStrategy {
     /// Prefer workers that have been least recently used to run a job.
     #[default]
@@ -65,9 +90,9 @@ pub enum WorkerAllocationStrategy {
     most_recently_used,
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
-pub struct SimpleScheduler {
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
+pub struct SimpleSpec {
     /// A list of supported platform properties mapped to how these properties
     /// are used when the scheduler looks for worker nodes capable of running
     /// the task.
@@ -132,16 +157,20 @@ pub struct SimpleScheduler {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
 pub enum ExperimentalSimpleSchedulerBackend {
     /// Use an in-memory store for the scheduler.
-    memory,
+    Memory(MemoryBackend),
+
     /// Use a redis store for the scheduler.
     redis(ExperimentalRedisSchedulerBackend),
 }
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+pub struct MemoryBackend {}
+
+#[derive(Clone, Deserialize, Debug, Default, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
 pub struct ExperimentalRedisSchedulerBackend {
     /// A reference to the redis store to use for the scheduler.
     /// Note: This MUST resolve to a RedisStore.
@@ -152,9 +181,9 @@ pub struct ExperimentalRedisSchedulerBackend {
 /// is useful to use when doing some kind of local action cache or CAS away from
 /// the main cluster of workers.  In general, it's more efficient to point the
 /// build at the main scheduler directly though.
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct GrpcScheduler {
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
+pub struct GrpcSpec {
     /// The upstream scheduler to forward requests to.
     pub endpoint: GrpcEndpoint,
 
@@ -174,20 +203,21 @@ pub struct GrpcScheduler {
     pub connections_per_endpoint: usize,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct CacheLookupScheduler {
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
+pub struct CacheLookupSpec {
     /// The reference to the action cache store used to return cached
     /// actions from rather than running them again.
     /// To prevent unintended issues, this store should probably be a CompletenessCheckingStore.
     pub ac_store: StoreRefName,
 
     /// The nested scheduler to use if cache lookup fails.
-    pub scheduler: Box<SchedulerConfig>,
+    #[schemars(with = "SchedulerRefName")]
+    pub scheduler: SchedulerRef,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize, Debug, Clone, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
 pub struct PlatformPropertyAddition {
     /// The name of the property to add.
     pub name: String,
@@ -196,7 +226,7 @@ pub struct PlatformPropertyAddition {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Serialize, JsonSchema)]
 pub enum PropertyModification {
     /// Add a property to the action properties.
     add(PlatformPropertyAddition),
@@ -204,9 +234,9 @@ pub enum PropertyModification {
     remove(String),
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct PropertyModifierScheduler {
+#[derive(Clone, Deserialize, Debug, Serialize, JsonSchema)]
+#[cfg_attr(not(feature = "crd"), serde(deny_unknown_fields))]
+pub struct PropertyModifierSpec {
     /// A list of modifications to perform to incoming actions for the nested
     /// scheduler.  These are performed in order and blindly, so removing a
     /// property that doesn't exist is fine and overwriting an existing property
@@ -215,5 +245,6 @@ pub struct PropertyModifierScheduler {
     pub modifications: Vec<PropertyModification>,
 
     /// The nested scheduler to use after modifying the properties.
-    pub scheduler: Box<SchedulerConfig>,
+    #[schemars(with = "SchedulerRefName")]
+    pub scheduler: SchedulerRef,
 }

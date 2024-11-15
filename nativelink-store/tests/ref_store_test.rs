@@ -30,12 +30,12 @@ fn setup_stores() -> (Arc<StoreManager>, Store, Store) {
     let store_manager = Arc::new(StoreManager::new());
 
     let memory_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     store_manager.add_store("foo", memory_store.clone());
 
     let ref_store = Store::new(RefStore::new(
-        &nativelink_config::stores::RefStore {
+        &nativelink_config::stores::RefSpec {
             name: "foo".to_string(),
         },
         Arc::downgrade(&store_manager),
@@ -141,12 +141,12 @@ async fn inner_store_test() -> Result<(), Error> {
     let store_manager = Arc::new(StoreManager::new());
 
     let memory_store = Store::new(MemoryStore::new(
-        &nativelink_config::stores::MemoryStore::default(),
+        &nativelink_config::stores::MemorySpec::default(),
     ));
     store_manager.add_store("mem_store", memory_store.clone());
 
     let ref_store_inner = Store::new(RefStore::new(
-        &nativelink_config::stores::RefStore {
+        &nativelink_config::stores::RefSpec {
             name: "mem_store".to_string(),
         },
         Arc::downgrade(&store_manager),
@@ -154,7 +154,7 @@ async fn inner_store_test() -> Result<(), Error> {
     store_manager.add_store("ref_store_inner", ref_store_inner.clone());
 
     let ref_store_outer = Store::new(RefStore::new(
-        &nativelink_config::stores::RefStore {
+        &nativelink_config::stores::RefSpec {
             name: "ref_store_inner".to_string(),
         },
         Arc::downgrade(&store_manager),

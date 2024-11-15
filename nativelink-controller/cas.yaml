@@ -1,0 +1,92 @@
+---
+apiVersion: kube.rs/v1alpha1
+kind: NativeLink
+metadata:
+  name: nativelink-cas
+  namespace: default
+spec:
+  image: localhost:5001/nativelink:c567im4v5y7c25g0xaicmpfapgbjfgii
+  replicas: 1
+  runtime:
+    args: []
+    env:
+      RUST_LOG: "info"
+  # This configuration places objects in various directories in
+  # `~/.cache/nativelink`. When this location is mounted as a PersistentVolume
+  # it persists the cache across restarts.
+  config:
+    stores:
+      - name: CAS_MAIN_STORE,
+        existenceCache:
+          backend: "compression-store"
+
+      - name: compression-store
+        compression:
+         compression_algorithm:
+           lz4: {}
+         backend: fs-cas
+
+      - name: fs-cas
+        filesystem:
+          content_path: ~/.cache/nativelink/content_path-cas
+          temp_path: ~/.cache/nativelink/tmp_path-cas
+          eviction_policy:
+            # 10gb
+            max_bytes: 10000000000
+
+      - name: AC_MAIN_STORE
+        completenessChecking:
+          backend: fs-ac
+          cas_store: ref-cas
+
+      - name: fs-ac
+        filesystem:
+          content_path: ~/.cache/nativelink/content_path-ac
+          temp_path: ~/.cache/nativelink/tmp_path-ac
+          eviction_policy:
+            # 500mb
+            max_bytes: 500000000
+
+      - name: ref-cas
+        ref:
+          name: CAS_MAIN_STORE
+    servers:
+      - listener:
+          http:
+            socket_address: 0.0.0.0:50051
+        services:
+          cas:
+            main:
+              cas_store: CAS_MAIN_STORE
+          ac:
+            main:
+              ac_store: AC_MAIN_STORE
+          capabilities: {}
+          bytestream:
+            cas_stores:
+              main: CAS_MAIN_STORE
+      # Only publish metrics on a private port.
+      - listener:
+          http:
+            socket_address: 0.0.0.0:50061
+        services:
+          experimental_prometheus:
+            path: /metrics
+      - listener:
+          http:
+            socket_address: 0.0.0.0:50071
+            tls:
+              cert_file: /root/example-do-not-use-in-prod-rootca.crt
+              key_file: /root/example-do-not-use-in-prod-key.pem
+        services:
+          cas:
+            main:
+              cas_store: CAS_MAIN_STORE
+          ac:
+            main:
+              ac_store: AC_MAIN_STORE
+          capabilities: {}
+          bytestream:
+            cas_stores:
+              main: CAS_MAIN_STORE
+          health: {}

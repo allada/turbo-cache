@@ -91,7 +91,7 @@ pub struct GrpcScheduler {
 }
 
 impl GrpcScheduler {
-    pub fn new(config: &nativelink_config::schedulers::GrpcScheduler) -> Result<Self, Error> {
+    pub fn new(config: &nativelink_config::schedulers::GrpcSpec) -> Result<Self, Error> {
         let jitter_amt = config.retry.jitter;
         Self::new_with_jitter(
             config,
@@ -107,7 +107,7 @@ impl GrpcScheduler {
     }
 
     pub fn new_with_jitter(
-        config: &nativelink_config::schedulers::GrpcScheduler,
+        config: &nativelink_config::schedulers::GrpcSpec,
         jitter_fn: Box<dyn Fn(Duration) -> Duration + Send + Sync>,
     ) -> Result<Self, Error> {
         let endpoint = tls_utils::endpoint(&config.endpoint)?;

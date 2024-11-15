@@ -1,40 +1,45 @@
 {
-  "stores": {
-    "CAS_FAST_SLOW_STORE": {
-      "redis_store": {
+  "stores": [
+    {
+      "name": "CAS_FAST_SLOW_STORE",
+      "redis": {
         "addresses": ["redis://127.0.0.1:6379/"],
         "mode": "cluster"
       }
-    },
-    "AC_FAST_SLOW_STORE": {
-      "redis_store": {
+    }, {
+      "name": "AC_FAST_SLOW_STORE",
+      "redis": {
         "addresses": ["redis://127.0.0.1:6379/"],
         "mode": "cluster"
       }
-    },
-    "AC_MAIN_STORE": {
-      "completeness_checking": {
+    }, {
+      "name": "AC_MAIN_STORE",
+      "completenessChecking": {
         "backend": {
-          "ref_store": {
+          "name": "ac-ref",
+          "ref": {
             "name": "AC_FAST_SLOW_STORE"
           }
         },
         "cas_store": {
-          "ref_store": {
+          "name": "cas-ref",
+          "ref": {
             "name": "CAS_MAIN_STORE"
           }
         }
       }
-    },
-    "CAS_MAIN_STORE": {
-      "existence_cache": {
+    }, {
+      "name": "CAS_MAIN_STORE",
+      "existenceCache": {
         "backend": {
+          "name": "cas-compression",
           "compression": {
             "compression_algorithm": {
               "lz4": {}
             },
             "backend": {
-              "ref_store": {
+              "name": "cas-compression-ref",
+              "ref": {
                 "name": "CAS_FAST_SLOW_STORE"
               }
             }
@@ -42,7 +47,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [
     {
       "listener": {

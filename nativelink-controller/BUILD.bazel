@@ -1,0 +1,2 @@
+# TODO(aaronmondal): At the moment the implicit dependency kube-core can't be
+#                    built with rules_rust. Figure out why and fix it.

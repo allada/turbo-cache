@@ -47,7 +47,7 @@ pub struct VerifyStore {
 }
 
 impl VerifyStore {
-    pub fn new(config: &nativelink_config::stores::VerifyStore, inner_store: Store) -> Arc<Self> {
+    pub fn new(config: &nativelink_config::stores::VerifySpec, inner_store: Store) -> Arc<Self> {
         Arc::new(VerifyStore {
             inner_store,
             verify_size: config.verify_size,

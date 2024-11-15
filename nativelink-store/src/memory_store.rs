@@ -57,7 +57,7 @@ pub struct MemoryStore {
 }
 
 impl MemoryStore {
-    pub fn new(config: &nativelink_config::stores::MemoryStore) -> Arc<Self> {
+    pub fn new(config: &nativelink_config::stores::MemorySpec) -> Arc<Self> {
         let empty_policy = nativelink_config::stores::EvictionPolicy::default();
         let eviction_policy = config.eviction_policy.as_ref().unwrap_or(&empty_policy);
         Arc::new(Self {

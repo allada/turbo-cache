@@ -1,26 +1,26 @@
 {
-  "stores": {
-    "AC_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "AC_MAIN_STORE",
       "filesystem": {
         "content_path": "/tmp/nativelink/data-worker-test/content_path-ac",
         "temp_path": "/tmp/nativelink/data-worker-test/tmp_path-ac",
         "eviction_policy": {
-          // 1gb.
-          "max_bytes": 1000000000,
+          "max_bytes": "1Gb",
         }
       }
-    },
-    "WORKER_FAST_SLOW_STORE": {
-      "fast_slow": {
+    }, {
+      "name": "WORKER_FAST_SLOW_STORE",
+      "fastSlow": {
         // "fast" must be a "filesystem" store because the worker uses it to make
         // hardlinks on disk to a directory where the jobs are running.
         "fast": {
+          "name": "fs-worker",
           "filesystem": {
             "content_path": "/tmp/nativelink/data-worker-test/content_path-cas",
             "temp_path": "/tmp/nativelink/data-worker-test/tmp_path-cas",
             "eviction_policy": {
-              // 10gb.
-              "max_bytes": 10000000000,
+              "max_bytes": "10Gb",
             }
           }
         },
@@ -30,13 +30,15 @@
           /// so they share the same underlying CAS. Since workers require a fast_slow
           /// store, we use the fast store as our primary data store, and the slow store
           /// is just a noop, since there's no shared storage in this config.
-          "noop": {}
+          "name": "discard",
+          "noop": {},
         }
       }
     }
-  },
-  "schedulers": {
-    "MAIN_SCHEDULER": {
+  ],
+  "schedulers": [
+    {
+      "name": "MAIN_SCHEDULER",
       "simple": {
         "supported_platform_properties": {
           "cpu_count": "minimum",
@@ -61,7 +63,7 @@
         }
       }
     }
-  },
+  ],
   "workers": [{
     "local": {
       "worker_api_endpoint": {

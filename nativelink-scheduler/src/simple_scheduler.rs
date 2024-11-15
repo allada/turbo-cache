@@ -281,7 +281,7 @@ impl SimpleScheduler {
 
 impl SimpleScheduler {
     pub fn new<A: AwaitedActionDb>(
-        scheduler_cfg: &nativelink_config::schedulers::SimpleScheduler,
+        scheduler_cfg: &nativelink_config::schedulers::SimpleSpec,
         awaited_action_db: A,
         task_change_notify: Arc<Notify>,
     ) -> (Arc<Self>, Arc<dyn WorkerScheduler>) {
@@ -311,7 +311,7 @@ impl SimpleScheduler {
         I: InstantWrapper,
         NowFn: Fn() -> I + Clone + Send + Unpin + Sync + 'static,
     >(
-        scheduler_cfg: &nativelink_config::schedulers::SimpleScheduler,
+        scheduler_cfg: &nativelink_config::schedulers::SimpleSpec,
         awaited_action_db: A,
         on_matching_engine_run: F,
         task_change_notify: Arc<Notify>,
