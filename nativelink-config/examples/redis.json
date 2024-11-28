@@ -1,18 +1,19 @@
 {
-  "stores": {
-    "CAS_FAST_SLOW_STORE": {
+  "stores": [
+    {
+      "name": "CAS_FAST_SLOW_STORE",
       "redis_store": {
         "addresses": ["redis://127.0.0.1:6379/"],
         "mode": "cluster"
       }
-    },
-    "AC_FAST_SLOW_STORE": {
+    }, {
+      "name": "AC_FAST_SLOW_STORE",
       "redis_store": {
         "addresses": ["redis://127.0.0.1:6379/"],
         "mode": "cluster"
       }
-    },
-    "AC_MAIN_STORE": {
+    }, {
+      "name": "AC_MAIN_STORE",
       "completeness_checking": {
         "backend": {
           "ref_store": {
@@ -25,8 +26,8 @@
           }
         }
       }
-    },
-    "CAS_MAIN_STORE": {
+    }, {
+      "name": "CAS_MAIN_STORE",
       "existence_cache": {
         "backend": {
           "compression": {
@@ -42,7 +43,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [
     {
       "listener": {

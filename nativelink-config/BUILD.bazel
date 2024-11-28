@@ -31,6 +31,7 @@ rust_test_suite(
     name = "integration",
     timeout = "short",
     srcs = [
+        "tests/backwards_compat_test.rs",
         "tests/deserialization_test.rs",
     ],
     deps = [
@@ -40,6 +41,7 @@ rust_test_suite(
         "@crates//:humantime",
         "@crates//:pretty_assertions",
         "@crates//:serde",
+        "@crates//:serde_json",
         "@crates//:serde_json5",
     ],
 )

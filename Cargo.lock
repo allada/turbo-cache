@@ -1917,6 +1917,7 @@ dependencies = [
  "humantime",
  "pretty_assertions",
  "serde",
+ "serde_json",
  "serde_json5",
  "shellexpand",
 ]

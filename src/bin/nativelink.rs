@@ -30,6 +30,7 @@ use nativelink_config::cas_server::{
     CasConfig, GlobalConfig, HttpCompressionAlgorithm, ListenerConfig, ServerConfig, WorkerConfig,
 };
 use nativelink_config::stores::ConfigDigestHashFunction;
+use nativelink_config::{SchedulerConfig, StoreConfig};
 use nativelink_error::{make_err, make_input_err, Code, Error, ResultExt};
 use nativelink_metric::{
     MetricFieldData, MetricKind, MetricPublishKnownKindData, MetricsComponent, RootMetricsComponent,
@@ -183,11 +184,11 @@ async fn inner_main(
     {
         let mut health_registry_lock = health_registry_builder.lock().await;
 
-        for (name, store_cfg) in cfg.stores {
+        for StoreConfig { name, spec } in cfg.stores {
             let health_component_name = format!("stores/{name}");
             let mut health_register_store =
                 health_registry_lock.sub_builder(&health_component_name);
-            let store = store_factory(&store_cfg, &store_manager, Some(&mut health_register_store))
+            let store = store_factory(&spec, &store_manager, Some(&mut health_register_store))
                 .await
                 .err_tip(|| format!("Failed to create store '{name}'"))?;
             store_manager.add_store(&name, store);
@@ -196,17 +197,15 @@ async fn inner_main(
 
     let mut action_schedulers = HashMap::new();
     let mut worker_schedulers = HashMap::new();
-    if let Some(schedulers_cfg) = cfg.schedulers {
-        for (name, scheduler_cfg) in schedulers_cfg {
-            let (maybe_action_scheduler, maybe_worker_scheduler) =
-                scheduler_factory(&scheduler_cfg, &store_manager)
-                    .err_tip(|| format!("Failed to create scheduler '{name}'"))?;
-            if let Some(action_scheduler) = maybe_action_scheduler {
-                action_schedulers.insert(name.clone(), action_scheduler.clone());
-            }
-            if let Some(worker_scheduler) = maybe_worker_scheduler {
-                worker_schedulers.insert(name.clone(), worker_scheduler.clone());
-            }
+    for SchedulerConfig { name, spec } in cfg.schedulers.iter().flatten() {
+        let (maybe_action_scheduler, maybe_worker_scheduler) =
+            scheduler_factory(spec, &store_manager)
+                .err_tip(|| format!("Failed to create scheduler '{name}'"))?;
+        if let Some(action_scheduler) = maybe_action_scheduler {
+            action_schedulers.insert(name.clone(), action_scheduler.clone());
+        }
+        if let Some(worker_scheduler) = maybe_worker_scheduler {
+            worker_schedulers.insert(name.clone(), worker_scheduler.clone());
         }
     }
 

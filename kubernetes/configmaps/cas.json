@@ -2,8 +2,9 @@
 // `~/.cache/nativelink`. When this location is mounted as a PersistentVolume
 // it persists the cache across restarts.
 {
-  "stores": {
-    "CAS_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "CAS_MAIN_STORE",
       "existence_cache": {
         "backend": {
           "compression": {
@@ -23,8 +24,8 @@
           }
         }
       }
-    },
-    "AC_MAIN_STORE": {
+    }, {
+      "name": "AC_MAIN_STORE",
       "completeness_checking": {
         "backend": {
           "filesystem": {
@@ -43,7 +44,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {

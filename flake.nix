@@ -502,6 +502,7 @@
               pkgs.cosign
               pkgs.kubectl
               pkgs.kubernetes-helm
+              pkgs.kubectx
               pkgs.cilium-cli
               pkgs.vale
               pkgs.trivy

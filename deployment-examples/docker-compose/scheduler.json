@@ -1,6 +1,7 @@
 {
-  "stores": {
-    "GRPC_LOCAL_STORE": {
+  "stores": [
+    {
+      "name": "GRPC_LOCAL_STORE",
       // Note: This file is used to test GRPC store.
       "grpc": {
         "instance_name": "",
@@ -9,8 +10,8 @@
         ],
         "store_type": "cas"
       }
-    },
-    "GRPC_LOCAL_AC_STORE": {
+    }, {
+      "name": "GRPC_LOCAL_AC_STORE",
       // Note: This file is used to test GRPC store.
       "grpc": {
         "instance_name": "",
@@ -20,9 +21,10 @@
         "store_type": "ac"
       }
     }
-  },
-  "schedulers": {
-    "MAIN_SCHEDULER": {
+  ],
+  "schedulers": [
+    {
+      "name": "MAIN_SCHEDULER",
       "simple": {
         "supported_platform_properties": {
           "cpu_count": "minimum",
@@ -31,7 +33,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {

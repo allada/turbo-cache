@@ -4,8 +4,9 @@
 // so objects are compressed, deduplicated and uses some in-memory
 // optimizations for certain hot paths.
 {
-  "stores": {
-    "CAS_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "CAS_MAIN_STORE",
       "compression": {
         "compression_algorithm": {
           "lz4": {}
@@ -21,8 +22,8 @@
           }
         }
       }
-    },
-    "AC_MAIN_STORE": {
+    }, {
+      "name": "AC_MAIN_STORE",
       "filesystem": {
         "content_path": "~/.cache/nativelink/content_path-ac",
         "temp_path": "~/.cache/nativelink/tmp_path-ac",
@@ -32,7 +33,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {

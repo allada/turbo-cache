@@ -1,6 +1,7 @@
 {
-  "stores": {
-    "CAS_MAIN_STORE": {
+  "stores": [
+    {
+      "name": "CAS_MAIN_STORE",
       "verify": {
         "backend": {
           "dedup": {
@@ -70,8 +71,8 @@
         "verify_size": true,
         "hash_verification_function": "sha256"
       }
-    },
-    "AC_MAIN_STORE": {
+    }, {
+      "name": "AC_MAIN_STORE",
       "fast_slow": {
         "fast": {
           "memory": {
@@ -104,9 +105,10 @@
         }
       }
     }
-  },
-  "schedulers": {
-    "MAIN_SCHEDULER": {
+  ],
+  "schedulers": [
+    {
+      "name": "MAIN_SCHEDULER",
       "simple": {
         "supported_platform_properties": {
           "cpu_count": "minimum",
@@ -127,7 +129,7 @@
         }
       }
     }
-  },
+  ],
   "servers": [{
     "listener": {
       "http": {
