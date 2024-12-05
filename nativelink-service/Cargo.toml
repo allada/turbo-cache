@@ -25,6 +25,7 @@ tonic = { version = "0.12.3", features = ["transport", "tls"], default-features 
 tower = { version = "0.5.1", default-features = false }
 tracing = { version = "0.1.40", default-features = false }
 uuid = { version = "1.10.0", default-features = false, features = ["v4", "serde"] }
+base64 = "0.21"
 
 [dev-dependencies]
 nativelink-macro = { path = "../nativelink-macro" }

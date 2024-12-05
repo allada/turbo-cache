@@ -38,9 +38,12 @@ use nativelink_util::digest_hasher::make_ctx_for_hash_func;
 use nativelink_util::store_trait::{Store, StoreLike};
 use tonic::{Request, Response, Status};
 use tracing::{error_span, event, instrument, Level};
+use tokio::sync::mpsc::UnboundedSender;
+use nativelink_util::request_metadata_tracer::MetadataEvent;
 
 pub struct CasServer {
     stores: HashMap<String, Store>,
+    metadata_tx: Option<UnboundedSender<MetadataEvent>>
 }
 
 type GetTreeStream = Pin<Box<dyn Stream<Item = Result<GetTreeResponse, Status>> + Send + 'static>>;
@@ -49,6 +52,7 @@ impl CasServer {
     pub fn new(
         config: &HashMap<InstanceName, CasStoreConfig>,
         store_manager: &StoreManager,
+        metadata_tx: UnboundedSender<MetadataEvent>
     ) -> Result<Self, Error> {
         let mut stores = HashMap::with_capacity(config.len());
         for (instance_name, cas_cfg) in config {
@@ -57,7 +61,7 @@ impl CasServer {
             })?;
             stores.insert(instance_name.to_string(), store);
         }
-        Ok(CasServer { stores })
+        Ok(CasServer { stores , metadata_tx: Some(metadata_tx.clone()) })
     }
 
     pub fn into_service(self) -> Server<CasServer> {
@@ -315,16 +319,27 @@ impl ContentAddressableStorage for CasServer {
         &self,
         grpc_request: Request<FindMissingBlobsRequest>,
     ) -> Result<Response<FindMissingBlobsResponse>, Status> {
-        let request = grpc_request.into_inner();
-        make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In CasServer::find_missing_blobs")?
-            .wrap_async(
-                error_span!("cas_server_find_missing_blobs"),
-                self.inner_find_missing_blobs(request),
-            )
-            .await
-            .err_tip(|| "Failed on find_missing_blobs() command")
-            .map_err(Into::into)
+        let inner_find_missing_blobs = |grpc_request: Request<FindMissingBlobsRequest>| async {
+            let request = grpc_request.into_inner();
+            make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In CasServer::find_missing_blobs")?
+                .wrap_async(
+                    error_span!("cas_server_find_missing_blobs"),
+                    self.inner_find_missing_blobs(request),
+                )
+                .await
+                .err_tip(|| "Failed on find_missing_blobs() command")
+                .map_err(Into::into)
+        };
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "find_missing_blobs",
+            inner_find_missing_blobs,
+            grpc_request,
+            metadata_tx
+        )
     }
 
     #[allow(clippy::blocks_in_conditions)]
@@ -339,16 +354,28 @@ impl ContentAddressableStorage for CasServer {
         &self,
         grpc_request: Request<BatchUpdateBlobsRequest>,
     ) -> Result<Response<BatchUpdateBlobsResponse>, Status> {
-        let request = grpc_request.into_inner();
-        make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In CasServer::batch_update_blobs")?
-            .wrap_async(
-                error_span!("cas_server_batch_update_blobs"),
-                self.inner_batch_update_blobs(request),
-            )
-            .await
-            .err_tip(|| "Failed on batch_update_blobs() command")
-            .map_err(Into::into)
+        let inner_batch_update_blobs = |grpc_request: Request<BatchUpdateBlobsRequest>| async {
+            let request = grpc_request.into_inner();
+            make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In CasServer::batch_update_blobs")?
+                .wrap_async(
+                    error_span!("cas_server_batch_update_blobs"),
+                    self.inner_batch_update_blobs(request),
+                )
+                .await
+                .err_tip(|| "Failed on batch_update_blobs() command")
+                .map_err(Into::into)
+        };
+
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "batch_update_blobs",
+            inner_batch_update_blobs,
+            grpc_request,
+            metadata_tx
+        )
     }
 
     #[allow(clippy::blocks_in_conditions)]
@@ -363,16 +390,27 @@ impl ContentAddressableStorage for CasServer {
         &self,
         grpc_request: Request<BatchReadBlobsRequest>,
     ) -> Result<Response<BatchReadBlobsResponse>, Status> {
-        let request = grpc_request.into_inner();
-        make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In CasServer::batch_read_blobs")?
-            .wrap_async(
-                error_span!("cas_server_batch_read_blobs"),
-                self.inner_batch_read_blobs(request),
-            )
-            .await
-            .err_tip(|| "Failed on batch_read_blobs() command")
-            .map_err(Into::into)
+        let inner_batch_read_blobs = |grpc_request: Request<BatchReadBlobsRequest>| async {
+            let request = grpc_request.into_inner();
+            make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In CasServer::batch_read_blobs")?
+                .wrap_async(
+                    error_span!("cas_server_batch_read_blobs"),
+                    self.inner_batch_read_blobs(request),
+                )
+                .await
+                .err_tip(|| "Failed on batch_read_blobs() command")
+                .map_err(Into::into)
+        };
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "batch_read_blobs",
+            inner_batch_read_blobs,
+            grpc_request,
+            metadata_tx
+        )
     }
 
     #[allow(clippy::blocks_in_conditions)]
@@ -386,19 +424,30 @@ impl ContentAddressableStorage for CasServer {
         &self,
         grpc_request: Request<GetTreeRequest>,
     ) -> Result<Response<Self::GetTreeStream>, Status> {
-        let request = grpc_request.into_inner();
-        let resp = make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In CasServer::get_tree")?
-            .wrap_async(
-                error_span!("cas_server_get_tree"),
-                self.inner_get_tree(request),
-            )
-            .await
-            .err_tip(|| "Failed on get_tree() command")
-            .map_err(Into::into);
-        if resp.is_ok() {
-            event!(Level::DEBUG, return = "Ok(<stream>)");
-        }
-        resp
+        let inner_get_tree = |grpc_request: Request<GetTreeRequest>| async {
+            let request = grpc_request.into_inner();
+            let resp = make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In CasServer::get_tree")?
+                .wrap_async(
+                    error_span!("cas_server_get_tree"),
+                    self.inner_get_tree(request),
+                )
+                .await
+                .err_tip(|| "Failed on get_tree() command")
+                .map_err(Into::into);
+            if resp.is_ok() {
+                event!(Level::DEBUG, return = "Ok(<stream>)");
+            }
+            resp
+        };
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "get_tree",
+            inner_get_tree,
+            grpc_request,
+            metadata_tx
+        )
     }
 }

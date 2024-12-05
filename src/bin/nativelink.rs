@@ -244,6 +244,18 @@ async fn inner_main(
         schedulers: action_schedulers.clone(),
     }));
 
+    let (metadata_tx, metadata_rx) = tokio::sync::mpsc::unbounded_channel::<
+        nativelink_util::request_metadata_tracer::MetadataEvent,
+    >();
+
+    let metadata_rx: Arc<
+        tokio::sync::Mutex<
+            tokio::sync::mpsc::UnboundedReceiver<
+                nativelink_util::request_metadata_tracer::MetadataEvent,
+            >,
+        >,
+    > = Arc::new(tokio::sync::Mutex::new(metadata_rx));
+
     for (server_cfg, connected_clients_mux) in servers_and_clients {
         let services = server_cfg
             .services
@@ -257,7 +269,7 @@ async fn inner_main(
                 services
                     .ac
                     .map_or(Ok(None), |cfg| {
-                        AcServer::new(&cfg, &store_manager).map(|v| {
+                        AcServer::new(&cfg, &store_manager, metadata_tx.clone()).map(|v| {
                             let mut service = v.into_service();
                             let send_algo = &http_config.compression.send_compression_algorithm;
                             if let Some(encoding) =
@@ -283,7 +295,7 @@ async fn inner_main(
                 services
                     .cas
                     .map_or(Ok(None), |cfg| {
-                        CasServer::new(&cfg, &store_manager).map(|v| {
+                        CasServer::new(&cfg, &store_manager, metadata_tx.clone()).map(|v| {
                             let mut service = v.into_service();
                             let send_algo = &http_config.compression.send_compression_algorithm;
                             if let Some(encoding) =
@@ -309,7 +321,13 @@ async fn inner_main(
                 services
                     .execution
                     .map_or(Ok(None), |cfg| {
-                        ExecutionServer::new(&cfg, &action_schedulers, &store_manager).map(|v| {
+                        ExecutionServer::new(
+                            &cfg,
+                            &action_schedulers,
+                            &store_manager,
+                            metadata_tx.clone(),
+                        )
+                        .map(|v| {
                             let mut service = v.into_service();
                             let send_algo = &http_config.compression.send_compression_algorithm;
                             if let Some(encoding) =
@@ -367,6 +385,7 @@ async fn inner_main(
                             CapabilitiesServer::new(
                                 services.capabilities.as_ref().unwrap(),
                                 &action_schedulers,
+                                metadata_tx.clone(),
                             )
                         }),
                 )
@@ -425,7 +444,8 @@ async fn inner_main(
                 services
                     .experimental_bep
                     .map_or(Ok(None), |cfg| {
-                        BepServer::new(&cfg, &store_manager).map(|v| {
+                        // Pass the rx into this service.
+                        BepServer::new(&cfg, &store_manager, metadata_rx.clone()).map(|v| {
                             let mut service = v.into_service();
                             let send_algo = &http_config.compression.send_compression_algorithm;
                             if let Some(encoding) =

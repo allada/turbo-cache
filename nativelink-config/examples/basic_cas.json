@@ -1,5 +1,14 @@
 {
   "stores": {
+    "BEP_STORE": {
+      "redis_store": {
+        "addresses": [
+          "redis://127.0.0.1:6379/1"
+        ],
+        "experimental_pub_sub_channel": "BEP",
+        "mode": "standard"
+      }
+    },
     "AC_MAIN_STORE": {
       "filesystem": {
         "content_path": "/tmp/nativelink/data-worker-test/content_path-ac",
@@ -156,6 +165,9 @@
       },
       "admin": {},
       "health": {},
+      "experimental_bep": {
+        "store": "BEP_STORE"
+      },
     }
   }],
   "global": {

@@ -43,6 +43,8 @@ use nativelink_util::operation_state_manager::{
 use nativelink_util::store_trait::Store;
 use tonic::{Request, Response, Status};
 use tracing::{error_span, event, instrument, Level};
+use tokio::sync::mpsc::UnboundedSender;
+use nativelink_util::request_metadata_tracer::MetadataEvent;
 
 type InstanceInfoName = String;
 
@@ -153,6 +155,7 @@ impl InstanceInfo {
 
 pub struct ExecutionServer {
     instance_infos: HashMap<InstanceName, InstanceInfo>,
+    metadata_tx: Option<UnboundedSender<MetadataEvent>>
 }
 
 type ExecuteStream = Pin<Box<dyn Stream<Item = Result<Operation, Status>> + Send + 'static>>;
@@ -162,6 +165,7 @@ impl ExecutionServer {
         config: &HashMap<InstanceName, ExecutionConfig>,
         scheduler_map: &HashMap<String, Arc<dyn ClientStateManager>>,
         store_manager: &StoreManager,
+        metadata_tx: UnboundedSender<MetadataEvent>
     ) -> Result<Self, Error> {
         let mut instance_infos = HashMap::with_capacity(config.len());
         for (instance_name, exec_cfg) in config {
@@ -188,7 +192,7 @@ impl ExecutionServer {
                 },
             );
         }
-        Ok(Self { instance_infos })
+        Ok(Self { instance_infos , metadata_tx: Some(metadata_tx.clone()) })
     }
 
     pub fn into_service(self) -> Server<ExecutionServer> {
@@ -334,16 +338,27 @@ impl Execution for ExecutionServer {
         &self,
         grpc_request: Request<ExecuteRequest>,
     ) -> Result<Response<ExecuteStream>, Status> {
-        let request = grpc_request.into_inner();
-        make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In ExecutionServer::execute")?
-            .wrap_async(
-                error_span!("execution_server_execute"),
-                self.inner_execute(request),
-            )
-            .await
-            .err_tip(|| "Failed on execute() command")
-            .map_err(Into::into)
+        let inner_execute = |grpc_request: Request<ExecuteRequest>| async {
+            let request = grpc_request.into_inner();
+            make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In ExecutionServer::execute")?
+                .wrap_async(
+                    error_span!("execution_server_execute"),
+                    self.inner_execute(request),
+                )
+                .await
+                .err_tip(|| "Failed on execute() command")
+                .map_err(Into::into)
+        };
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "execute",
+            inner_execute,
+            grpc_request,
+            metadata_tx
+        )
     }
 
     #[allow(clippy::blocks_in_conditions)]
@@ -357,15 +372,26 @@ impl Execution for ExecutionServer {
         &self,
         grpc_request: Request<WaitExecutionRequest>,
     ) -> Result<Response<ExecuteStream>, Status> {
-        let resp = self
-            .inner_wait_execution(grpc_request)
-            .await
-            .err_tip(|| "Failed on wait_execution() command")
-            .map_err(Into::into);
+        let inner_wait_execution = |grpc_request: Request<WaitExecutionRequest>| async {
+            let resp = self
+                .inner_wait_execution(grpc_request)
+                .await
+                .err_tip(|| "Failed on wait_execution() command")
+                .map_err(Into::into);
 
-        if resp.is_ok() {
-            event!(Level::DEBUG, return = "Ok(<stream>)");
-        }
-        resp
+            if resp.is_ok() {
+                event!(Level::DEBUG, return = "Ok(<stream>)");
+            }
+            resp
+        };
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "wait_execution",
+            inner_wait_execution,
+            grpc_request,
+            metadata_tx
+        )
     }
 }

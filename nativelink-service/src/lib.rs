@@ -12,6 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+macro_rules! wrap_with_metadata_tracing {
+    ($span_name:expr, $inner_fn:expr, $grpc_request:expr, $metadata_tx:expr) => {{
+        use futures::future::FutureExt;
+        use nativelink_util::request_metadata_tracer;
+        match request_metadata_tracer::extract_request_metadata_bin(&$grpc_request) {
+            Some(request_metadata_tracer) => {
+                let context = request_metadata_tracer::make_ctx_request_metadata_tracer(
+                    &request_metadata_tracer.metadata,
+                    $metadata_tx,
+                )
+                .err_tip(|| "Unable to parse request metadata")?;
+
+                context
+                    .wrap_async(
+                        error_span!($span_name),
+                        ($inner_fn)($grpc_request).inspect(|_| {
+                            request_metadata_tracer::emit_metadata_event(String::from($span_name));
+                        }),
+                    )
+                    .await
+                    .map_err(Into::into)
+            }
+            _ => ($inner_fn)($grpc_request).await,
+        }
+    }};
+}
+
 pub mod ac_server;
 pub mod bep_server;
 pub mod bytestream_server;

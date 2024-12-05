@@ -42,6 +42,7 @@ tracing = { version = "0.1.40", default-features = false }
 tracing-subscriber = { version = "0.3.18", features = ["ansi", "env-filter", "json"], default-features = false }
 uuid = { version = "1.10.0", default-features = false, features = ["v4", "serde"] }
 mock_instant = "0.5.1"
+base64 = "0.21"
 
 [dev-dependencies]
 nativelink-macro = { path = "../nativelink-macro" }

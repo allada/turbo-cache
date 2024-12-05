@@ -34,6 +34,8 @@ use nativelink_util::store_trait::{Store, StoreLike};
 use prost::Message;
 use tonic::{Request, Response, Status};
 use tracing::{error_span, event, instrument, Level};
+use tokio::sync::mpsc::UnboundedSender;
+use nativelink_util::request_metadata_tracer::MetadataEvent;
 
 #[derive(Clone)]
 pub struct AcStoreInfo {
@@ -43,6 +45,7 @@ pub struct AcStoreInfo {
 
 pub struct AcServer {
     stores: HashMap<String, AcStoreInfo>,
+    metadata_tx: Option<UnboundedSender<MetadataEvent>>
 }
 
 impl Debug for AcServer {
@@ -55,6 +58,7 @@ impl AcServer {
     pub fn new(
         config: &HashMap<InstanceName, AcStoreConfig>,
         store_manager: &StoreManager,
+        metadata_tx: UnboundedSender<MetadataEvent>
     ) -> Result<Self, Error> {
         let mut stores = HashMap::with_capacity(config.len());
         for (instance_name, ac_cfg) in config {
@@ -71,6 +75,7 @@ impl AcServer {
         }
         Ok(AcServer {
             stores: stores.clone(),
+            metadata_tx: Some(metadata_tx.clone())
         })
     }
 
@@ -170,20 +175,32 @@ impl ActionCache for AcServer {
         &self,
         grpc_request: Request<GetActionResultRequest>,
     ) -> Result<Response<ActionResult>, Status> {
-        let request = grpc_request.into_inner();
-        let resp = make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In AcServer::get_action_result")?
-            .wrap_async(
-                error_span!("ac_server_get_action_result"),
-                self.inner_get_action_result(request),
-            )
-            .await;
+        let inner_get_action_result = |grpc_request: Request<GetActionResultRequest>| async {
+            let request = grpc_request.into_inner();
+            let resp = make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In AcServer::get_action_result")?
+                .wrap_async(
+                    error_span!("ac_server_get_action_result"),
+                    self.inner_get_action_result(request),
+                )
+                .await;
 
-        // let resp = self.inner_get_action_result(grpc_request).await;
-        if resp.is_err() && resp.as_ref().err().unwrap().code != Code::NotFound {
-            event!(Level::ERROR, return = ?resp);
-        }
-        return resp.map_err(Into::into);
+            // let resp = self.inner_get_action_result(grpc_request).await;
+            if resp.is_err() && resp.as_ref().err().unwrap().code != Code::NotFound {
+                event!(Level::ERROR, return = ?resp);
+            }
+            return resp.map_err(Into::into);
+        };
+
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "get_action_result",
+            inner_get_action_result,
+            grpc_request,
+            metadata_tx
+        )
     }
 
     #[allow(clippy::blocks_in_conditions)]
@@ -198,14 +215,26 @@ impl ActionCache for AcServer {
         &self,
         grpc_request: Request<UpdateActionResultRequest>,
     ) -> Result<Response<ActionResult>, Status> {
-        let request = grpc_request.into_inner();
-        make_ctx_for_hash_func(request.digest_function)
-            .err_tip(|| "In AcServer::update_action_result")?
-            .wrap_async(
-                error_span!("ac_server_update_action_result"),
-                self.inner_update_action_result(request),
-            )
-            .await
-            .map_err(Into::into)
+        let inner_update_action_result = |grpc_request: Request<UpdateActionResultRequest>| async {
+            let request = grpc_request.into_inner();
+            make_ctx_for_hash_func(request.digest_function)
+                .err_tip(|| "In AcServer::update_action_result")?
+                .wrap_async(
+                    error_span!("ac_server_update_action_result"),
+                    self.inner_update_action_result(request),
+                )
+                .await
+                .map_err(Into::into)
+        };
+
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap().clone();
+        wrap_with_metadata_tracing!(
+            "update_action_result",
+            inner_update_action_result,
+            grpc_request,
+            metadata_tx
+        )
     }
 }

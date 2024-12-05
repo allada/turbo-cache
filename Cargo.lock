@@ -2033,6 +2033,7 @@ dependencies = [
  "async-lock",
  "async-trait",
  "axum",
+ "base64 0.21.7",
  "bytes",
  "futures",
  "http-body 1.0.1",
@@ -2120,6 +2121,7 @@ version = "0.5.3"
 dependencies = [
  "async-lock",
  "async-trait",
+ "base64 0.21.7",
  "bitflags",
  "blake3",
  "bytes",

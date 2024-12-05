@@ -30,6 +30,7 @@ pub mod operation_state_manager;
 pub mod origin_context;
 pub mod platform_properties;
 pub mod proto_stream_utils;
+pub mod request_metadata_tracer;
 pub mod resource_info;
 pub mod retry;
 pub mod shutdown_guard;

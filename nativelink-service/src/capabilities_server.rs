@@ -32,18 +32,23 @@ use nativelink_util::digest_hasher::default_digest_hasher_func;
 use nativelink_util::operation_state_manager::ClientStateManager;
 use tonic::{Request, Response, Status};
 use tracing::{event, instrument, Level};
+use tracing::error_span;
+use tokio::sync::mpsc::UnboundedSender;
+use nativelink_util::request_metadata_tracer::MetadataEvent;
 
 const MAX_BATCH_TOTAL_SIZE: i64 = 64 * 1024;
 
 #[derive(Debug, Default)]
 pub struct CapabilitiesServer {
     supported_node_properties_for_instance: HashMap<InstanceName, Vec<String>>,
+    metadata_tx: Option<UnboundedSender<MetadataEvent>>
 }
 
 impl CapabilitiesServer {
     pub async fn new(
         config: &HashMap<InstanceName, CapabilitiesConfig>,
         scheduler_map: &HashMap<String, Arc<dyn ClientStateManager>>,
+        metadata_tx: UnboundedSender<MetadataEvent>
     ) -> Result<Self, Error> {
         let mut supported_node_properties_for_instance = HashMap::new();
         for (instance_name, cfg) in config {
@@ -80,6 +85,7 @@ impl CapabilitiesServer {
         }
         Ok(CapabilitiesServer {
             supported_node_properties_for_instance,
+            metadata_tx: Some(metadata_tx.clone())
         })
     }
 
@@ -102,57 +108,69 @@ impl Capabilities for CapabilitiesServer {
         &self,
         grpc_request: Request<GetCapabilitiesRequest>,
     ) -> Result<Response<ServerCapabilities>, Status> {
-        let instance_name = grpc_request.into_inner().instance_name;
-        let maybe_supported_node_properties = self
-            .supported_node_properties_for_instance
-            .get(&instance_name);
-        let execution_capabilities =
-            maybe_supported_node_properties.map(|props_for_instance| ExecutionCapabilities {
-                digest_function: default_digest_hasher_func().proto_digest_func().into(),
-                exec_enabled: true, // TODO(blaise.bruer) Make this configurable.
-                execution_priority_capabilities: Some(PriorityCapabilities {
-                    priorities: vec![PriorityRange {
-                        min_priority: 0,
-                        max_priority: i32::MAX,
-                    }],
-                }),
-                supported_node_properties: props_for_instance.clone(),
-                digest_functions: vec![
-                    DigestFunction::Sha256.into(),
-                    DigestFunction::Blake3.into(),
-                ],
-            });
+        let inner_get_capabilities = |grpc_request: Request<GetCapabilitiesRequest>| async {
+            let instance_name = grpc_request.into_inner().instance_name;
+            let maybe_supported_node_properties = self
+                .supported_node_properties_for_instance
+                .get(&instance_name);
+            let execution_capabilities =
+                maybe_supported_node_properties.map(|props_for_instance| ExecutionCapabilities {
+                    digest_function: default_digest_hasher_func().proto_digest_func().into(),
+                    exec_enabled: true, // TODO(blaise.bruer) Make this configurable.
+                    execution_priority_capabilities: Some(PriorityCapabilities {
+                        priorities: vec![PriorityRange {
+                            min_priority: 0,
+                            max_priority: i32::MAX,
+                        }],
+                    }),
+                    supported_node_properties: props_for_instance.clone(),
+                    digest_functions: vec![
+                        DigestFunction::Sha256.into(),
+                        DigestFunction::Blake3.into(),
+                    ],
+                });
 
-        let resp = ServerCapabilities {
-            cache_capabilities: Some(CacheCapabilities {
-                digest_functions: vec![
-                    DigestFunction::Sha256.into(),
-                    DigestFunction::Blake3.into(),
-                ],
-                action_cache_update_capabilities: Some(ActionCacheUpdateCapabilities {
-                    update_enabled: true,
+            let resp = ServerCapabilities {
+                cache_capabilities: Some(CacheCapabilities {
+                    digest_functions: vec![
+                        DigestFunction::Sha256.into(),
+                        DigestFunction::Blake3.into(),
+                    ],
+                    action_cache_update_capabilities: Some(ActionCacheUpdateCapabilities {
+                        update_enabled: true,
+                    }),
+                    cache_priority_capabilities: None,
+                    max_batch_total_size_bytes: MAX_BATCH_TOTAL_SIZE,
+                    symlink_absolute_path_strategy: SymlinkAbsolutePathStrategy::Disallowed.into(),
+                    supported_compressors: vec![],
+                    supported_batch_update_compressors: vec![],
                 }),
-                cache_priority_capabilities: None,
-                max_batch_total_size_bytes: MAX_BATCH_TOTAL_SIZE,
-                symlink_absolute_path_strategy: SymlinkAbsolutePathStrategy::Disallowed.into(),
-                supported_compressors: vec![],
-                supported_batch_update_compressors: vec![],
-            }),
-            execution_capabilities,
-            deprecated_api_version: None,
-            low_api_version: Some(SemVer {
-                major: 2,
-                minor: 0,
-                patch: 0,
-                prerelease: String::new(),
-            }),
-            high_api_version: Some(SemVer {
-                major: 2,
-                minor: 3,
-                patch: 0,
-                prerelease: String::new(),
-            }),
+                execution_capabilities,
+                deprecated_api_version: None,
+                low_api_version: Some(SemVer {
+                    major: 2,
+                    minor: 0,
+                    patch: 0,
+                    prerelease: String::new(),
+                }),
+                high_api_version: Some(SemVer {
+                    major: 2,
+                    minor: 3,
+                    patch: 0,
+                    prerelease: String::new(),
+                }),
+            };
+            Ok(Response::new(resp))
         };
-        Ok(Response::new(resp))
+
+        // DANGER DANGER WILL ROBINSON
+        // An option was used to avoid the Default derive macro
+        let metadata_tx = &self.metadata_tx.as_ref().unwrap();
+        wrap_with_metadata_tracing!(
+            "get_capabilities",
+            inner_get_capabilities,
+            grpc_request,
+            metadata_tx
+        )
     }
 }
