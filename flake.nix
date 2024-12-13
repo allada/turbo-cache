@@ -52,7 +52,7 @@
         system,
         ...
       }: let
-        stable-rust-version = "1.82.0";
+        stable-rust-version = "1.83.0";
         nightly-rust-version = "2024-11-23";
 
         llvmPackages = pkgs.llvmPackages_19;

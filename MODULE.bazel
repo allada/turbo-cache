@@ -40,7 +40,7 @@ rust.toolchain(
         "2024-11-23/rustfmt-nightly-x86_64-unknown-linux-gnu.tar.xz": "ac2a8fff891473220d36c9e62afc2dc0d5aebaefbb8489584bd2446a37d6fd7b",
     },
     versions = [
-        "1.82.0",
+        "1.83.0",
         "nightly/2024-11-23",
     ],
 )
@@ -51,7 +51,7 @@ rust_host_tools = use_extension(
 )
 rust_host_tools.host_tools(
     edition = "2021",
-    version = "1.82.0",
+    version = "1.83.0",
 )
 
 use_repo(rust, "rust_toolchains")
