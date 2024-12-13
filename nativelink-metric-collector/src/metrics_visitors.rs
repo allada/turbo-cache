@@ -40,9 +40,8 @@ impl From<MetricKind> for CollectionKind {
     }
 }
 
-/// The final-metric primitive value and type that was collected.
 #[derive(Debug)]
-enum ValueWithPrimitiveType {
+pub enum ValueWithPrimitiveType {
     String(String),
     U64(u64),
 }
@@ -52,18 +51,12 @@ impl Default for ValueWithPrimitiveType {
         ValueWithPrimitiveType::U64(0)
     }
 }
-
-/// An intermediate structed that will have it's contents populated
-/// by the `tracing` layer for a given field.
-/// This is done by implementing the `Visit` trait and asking the
-/// `tracing` library to visit the fields of the captured event
-/// and populate this struct.
 #[derive(Default, Debug)]
 pub struct MetricDataVisitor {
     pub name: String,
-    value: ValueWithPrimitiveType,
-    help: String,
-    value_type: Option<CollectionKind>,
+    pub value: ValueWithPrimitiveType,
+    pub help: String,
+    pub value_type: Option<CollectionKind>,
 }
 
 impl From<MetricDataVisitor> for CollectedMetricPrimitive {
@@ -86,6 +79,24 @@ impl From<MetricDataVisitor> for CollectedMetricPrimitive {
     }
 }
 
+impl MetricDataVisitor {
+    pub fn record_test_value(&mut self, field_name: &str, value: &str) {
+        match field_name {
+            "name" => self.name = value.to_string(),
+            "__help" => self.help = value.to_string(),
+            "__value" => {
+                if let Ok(parsed) = value.parse::<u64>() {
+                    self.value = ValueWithPrimitiveType::U64(parsed);
+                } else {
+                    self.value = ValueWithPrimitiveType::String(value.to_string());
+                }
+            }
+            "test_key" => {}
+            _ => panic!("Unknown field: {field_name}"),
+        }
+    }
+}
+
 impl Visit for MetricDataVisitor {
     fn record_debug(&mut self, _field: &Field, _value: &dyn Debug) {}
 
@@ -94,59 +105,64 @@ impl Visit for MetricDataVisitor {
             self.value = ValueWithPrimitiveType::String(value.to_string());
         }
     }
+
     fn record_i64(&mut self, field: &Field, value: i64) {
         if field.name() == "__value" {
-            match u64::try_from(value) {
-                Ok(v) => self.value = ValueWithPrimitiveType::U64(v),
-                Err(_) => self.value = ValueWithPrimitiveType::String(value.to_string()),
-            }
+            self.value = match u64::try_from(value) {
+                Ok(v) => ValueWithPrimitiveType::U64(v),
+                Err(_) => ValueWithPrimitiveType::String(value.to_string()),
+            };
         }
     }
+
     fn record_u64(&mut self, field: &Field, value: u64) {
         match field.name() {
             "__value" => self.value = ValueWithPrimitiveType::U64(value),
-            "__type" => self.value_type = Some(MetricKind::from(value).into()),
+            "__type" => self.value_type = Some(CollectionKind::from(MetricKind::from(value))),
             "__help" => self.help = value.to_string(),
             "__name" => self.name = value.to_string(),
-            field => panic!("UNKNOWN FIELD {field}"),
+            "test_key" => {}
+            _ => panic!("UNKNOWN FIELD {field}"),
         }
     }
+
     fn record_i128(&mut self, field: &Field, value: i128) {
         if field.name() == "__value" {
-            match u64::try_from(value) {
-                Ok(v) => self.value = ValueWithPrimitiveType::U64(v),
-                Err(_) => self.value = ValueWithPrimitiveType::String(value.to_string()),
-            }
+            self.value = match u64::try_from(value) {
+                Ok(v) => ValueWithPrimitiveType::U64(v),
+                Err(_) => ValueWithPrimitiveType::String(value.to_string()),
+            };
         }
     }
+
     fn record_u128(&mut self, field: &Field, value: u128) {
         if field.name() == "__value" {
-            match u64::try_from(value) {
-                Ok(v) => self.value = ValueWithPrimitiveType::U64(v),
-                Err(_) => self.value = ValueWithPrimitiveType::String(value.to_string()),
-            }
+            self.value = match u64::try_from(value) {
+                Ok(v) => ValueWithPrimitiveType::U64(v),
+                Err(_) => ValueWithPrimitiveType::String(value.to_string()),
+            };
         }
     }
+
     fn record_bool(&mut self, field: &Field, value: bool) {
         if field.name() == "__value" {
             self.value = ValueWithPrimitiveType::U64(u64::from(value));
         }
     }
+
     fn record_str(&mut self, field: &Field, value: &str) {
         match field.name() {
             "__value" => self.value = ValueWithPrimitiveType::String(value.to_string()),
             "__help" => self.help = value.to_string(),
             "__name" => self.name = value.to_string(),
-            field => panic!("UNKNOWN FIELD {field}"),
+            "test_key" => {}
+            _ => panic!("UNKNOWN FIELD {field}"),
         }
     }
+
     fn record_error(&mut self, _field: &Field, _value: &(dyn std::error::Error + 'static)) {}
 }
 
-/// An intermediate structed that will have it's contents populated
-/// by the `tracing` layer for a given field.
-/// This is the same as `MetricDataVisitor` but only captures info
-/// about a given span on span creation.
 pub struct SpanFields {
     pub name: Cow<'static, str>,
 }

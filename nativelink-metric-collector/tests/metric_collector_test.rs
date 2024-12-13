@@ -188,3 +188,291 @@ target_info{service_name="unknown_service",telemetry_sdk_language="rust",telemet
 
     assert_eq!(output, expected_output);
 }
+
+#[cfg(test)]
+mod additional_tests {
+    use std::fmt::Debug;
+
+    use nativelink_metric_collector::metrics_visitors::{
+        CollectionKind, MetricDataVisitor, ValueWithPrimitiveType,
+    };
+    use tracing::callsite::Callsite;
+    use tracing::field::{Field, FieldSet, Visit};
+    use tracing::metadata::Kind;
+    use tracing::{callsite, Level, Metadata};
+    use tracing_core::subscriber::Interest;
+
+    struct MockCallsite;
+
+    static MOCK_METADATA: Metadata<'static> = Metadata::new(
+        "mock_target",
+        "mock_module",
+        Level::INFO,
+        Some("mock_file"),
+        Some(0),
+        None,
+        tracing_core::field::FieldSet::new(
+            &["__value", "debug_field"],
+            callsite::Identifier(&MockCallsite),
+        ),
+        Kind::SPAN,
+    );
+
+    impl callsite::Callsite for MockCallsite {
+        fn set_interest(&self, _: Interest) {}
+        fn metadata(&self) -> &'static Metadata<'static> {
+            &MOCK_METADATA
+        }
+    }
+
+    fn create_mock_field(name: &'static str) -> Field {
+        let field_set = MockCallsite.metadata().fields();
+        field_set
+            .field(name)
+            .expect("Field name should exist in FieldSet")
+    }
+
+    #[test]
+    fn test_record_f64() {
+        let mut visitor = MetricDataVisitor::default();
+        let field = create_mock_field("__value");
+
+        visitor.record_f64(&field, 42.5);
+
+        match visitor.value {
+            ValueWithPrimitiveType::String(s) => assert_eq!(s, "42.5"),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with value '42.5'")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_i64_valid() {
+        let mut visitor = MetricDataVisitor::default();
+        let field = create_mock_field("__value");
+        visitor.record_i64(&field, 42);
+        match &visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(*v, 42),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_i64_invalid() {
+        let mut visitor = MetricDataVisitor::default();
+        let field = create_mock_field("__value");
+        visitor.record_i64(&field, -42);
+        match visitor.value {
+            ValueWithPrimitiveType::String(s) => assert_eq!(s, "-42"),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with value '-42'")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_debug() {
+        let mut visitor = MetricDataVisitor::default();
+        let field = create_mock_field("debug_field");
+        visitor.record_debug(&field, &42 as &dyn Debug);
+    }
+
+    #[test]
+    fn test_record_test_value_with_name() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("name", "test_metric");
+        assert_eq!(visitor.name, "test_metric");
+    }
+
+    #[test]
+    fn test_record_test_value_with_help() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("__help", "Help message for test metric");
+        assert_eq!(visitor.help, "Help message for test metric");
+    }
+
+    #[test]
+    fn test_record_test_value_with_u64_value() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("__value", "42");
+        match visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(v, 42),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_test_value_with_string_value() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("__value", "non-numeric-value");
+        match visitor.value {
+            ValueWithPrimitiveType::String(ref s) => assert_eq!(s, "non-numeric-value"),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with value 'non-numeric-value'")
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown field: unknown_field")]
+    fn test_record_test_value_with_unknown_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("unknown_field", "value");
+    }
+
+    #[test]
+    fn test_record_test_value_with_ignored_key() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_test_value("test_key", "ignored_value");
+    }
+
+    fn mock_field(name: &'static str) -> Field {
+        let fieldset = FieldSet::new(
+            &["__value", "__type", "__help", "__name", "test_key"],
+            callsite::Identifier(&MockCallsite),
+        );
+        fieldset
+            .field(name)
+            .unwrap_or_else(|| panic!("UNKNOWN FIELD {name}"))
+    }
+
+    #[test]
+    fn test_record_u64_value_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u64(&mock_field("__value"), 42);
+        match visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(v, 42),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_u64_type_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u64(&mock_field("__type"), 1);
+        match visitor.value_type {
+            Some(CollectionKind::Counter) => {
+                println!("Matched CollectionKind::Counter as expected");
+            }
+            _ => panic!(
+                "Expected CollectionKind::Counter, got {:?}",
+                visitor.value_type
+            ),
+        }
+    }
+
+    #[test]
+    fn test_record_u64_help_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u64(&mock_field("__help"), 100);
+        assert_eq!(visitor.help, "100".to_string());
+    }
+
+    #[test]
+    fn test_record_u64_name_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u64(&mock_field("__name"), 123);
+        assert_eq!(visitor.name, "123".to_string());
+    }
+
+    #[test]
+    #[should_panic(expected = "UNKNOWN FIELD unknown_field")]
+    fn test_record_u64_unknown_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u64(&mock_field("unknown_field"), 99);
+    }
+
+    #[test]
+    fn test_record_i128_with_valid_u64_conversion() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_i128(&mock_field("__value"), 42);
+        match visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(v, 42),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_i128_with_invalid_u64_conversion() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_i128(&mock_field("__value"), i128::MAX);
+        match visitor.value {
+            ValueWithPrimitiveType::String(ref s) => assert_eq!(s, &i128::MAX.to_string()),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with i128::MAX value")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_u128_with_valid_u64_conversion() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_u128(&mock_field("__value"), 42);
+        match visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(v, 42),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_u128_with_invalid_u64_conversion() {
+        let mut visitor = MetricDataVisitor::default();
+        let field = create_mock_field("__value");
+        visitor.record_u128(&field, u128::MAX);
+        match &visitor.value {
+            ValueWithPrimitiveType::String(s) => assert_eq!(s, &u128::MAX.to_string()),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with u128::MAX value")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_bool_value() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_bool(&mock_field("__value"), true);
+        match visitor.value {
+            ValueWithPrimitiveType::U64(v) => assert_eq!(v, 1),
+            ValueWithPrimitiveType::String(_) => {
+                panic!("Expected ValueWithPrimitiveType::U64 with value 42")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_str_value_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_str(&mock_field("__value"), "test_string");
+        match visitor.value {
+            ValueWithPrimitiveType::String(ref s) => assert_eq!(s, "test_string"),
+            ValueWithPrimitiveType::U64(_) => {
+                panic!("Expected ValueWithPrimitiveType::String with value 'test_string'")
+            }
+        }
+    }
+
+    #[test]
+    fn test_record_str_help_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_str(&mock_field("__help"), "help text");
+        assert_eq!(visitor.help, "help text".to_string());
+    }
+
+    #[test]
+    fn test_record_str_name_field() {
+        let mut visitor = MetricDataVisitor::default();
+        visitor.record_str(&mock_field("__name"), "metric_name");
+        assert_eq!(visitor.name, "metric_name".to_string());
+    }
+}

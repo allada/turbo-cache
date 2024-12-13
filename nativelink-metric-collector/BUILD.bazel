@@ -22,6 +22,7 @@ rust_library(
         "@crates//:parking_lot",
         "@crates//:serde",
         "@crates//:tracing",
+        "@crates//:tracing-core",  # Add tracing-core dependency
         "@crates//:tracing-subscriber",
     ],
 )
@@ -45,6 +46,7 @@ rust_test_suite(
         "@crates//:prometheus",
         "@crates//:serde_json",
         "@crates//:tracing",
+        "@crates//:tracing-core",  # Add tracing-core dependency for tests
         "@crates//:tracing-subscriber",
     ],
 )

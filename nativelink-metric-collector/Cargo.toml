@@ -11,6 +11,7 @@ parking_lot = "0.12.3"
 serde = { version = "1.0.210", default-features = false }
 tracing = { version = "0.1.40", default-features = false }
 tracing-subscriber = { version = "0.3.18", default-features = false }
+tracing-core = { version = "0.1", features = ["std"] }
 
 [dev-dependencies]
 nativelink-error = { path = "../nativelink-error" }

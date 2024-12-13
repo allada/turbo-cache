@@ -1839,6 +1839,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "tracing-core",
  "tracing-subscriber",
 ]
 
