@@ -65,6 +65,7 @@ in {
 
       # Bun binary lockfile
       "web/platform/bun.lockb"
+      "web/ui/bun.lockb"
     ];
     enable = true;
     types = ["binary"];

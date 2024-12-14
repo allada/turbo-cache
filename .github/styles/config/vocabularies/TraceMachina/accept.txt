@@ -78,3 +78,7 @@ Wainer
 Gert
 Bruer
 Eagan
+Vue
+Vite
+VSCode
+Vetur
