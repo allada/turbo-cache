@@ -54,6 +54,32 @@ pub enum StoreSpec {
     ///
     memory(MemorySpec),
 
+    /// Azure Blob store will use Microsoft's Azure Blob service as a
+    /// backend to store the files. This configuration can be used to
+    /// share files across multiple instances.
+    ///
+    /// This configuration will never delete files, so you are
+    /// responsible for purging old files in other ways.
+    ///
+    /// **Example JSON Config:**
+    /// ```json
+    /// "experimental_azure_blob_store": {
+    ///     "account_name": "cloudshell1393657559",
+    ///     "account_key": "${AZURE_STORAGE_KEY}",
+    ///     "container": "simple-test-container",
+    ///     "blob_prefix": "folder/",
+    ///     "endpoint_suffix": "core.windows.net",
+    ///     "retry": {
+    ///         "max_retries": 6,
+    ///         "delay": 0.3,
+    ///         "jitter": 0.5
+    ///     },
+    ///     "max_concurrent_uploads": 10
+    /// }
+    /// ```
+    ///
+    experimental_azure_blob_store(AzureBlobSpec),
+
     /// S3 store will use Amazon's S3 service as a backend to store
     /// the files. This configuration can be used to share files
     /// across multiple instances.
@@ -775,6 +801,96 @@ pub struct S3Spec {
     /// Default: false
     #[serde(default)]
     pub insecure_allow_http: bool,
+
+    /// Disable http/2 connections and only use http/1.1. Default client
+    /// configuration will have http/1.1 and http/2 enabled for connection
+    /// schemes. Http/2 should be disabled if environments have poor support
+    /// or performance related to http/2. Safe to keep default unless
+    /// underlying network environment or S3 API servers specify otherwise.
+    ///
+    /// Default: false
+    #[serde(default)]
+    pub disable_http2: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct AzureBlobSpec {
+    /// The Azure Storage account name
+    #[serde(default, deserialize_with = "convert_string_with_shellexpand")]
+    pub account_name: String,
+
+    /// The Azure Storage account key
+    #[serde(default, deserialize_with = "convert_string_with_shellexpand")]
+    pub account_key: String,
+
+    /// The container name to use as the backend
+    #[serde(default, deserialize_with = "convert_string_with_shellexpand")]
+    pub container: String,
+
+    /// Optional prefix for blob paths within the container. If None, no prefix will be used.
+    #[serde(default)]
+    pub blob_prefix: Option<String>,
+
+    /// Retry configuration to use when a network request fails.
+    #[serde(default)]
+    pub retry: Retry,
+
+    /// If the number of seconds since the blob's last modified time
+    /// is greater than this value, the blob will not be considered
+    /// "existing". This allows for external lifecycle management policies
+    /// to delete blobs that haven't been accessed in a long time.
+    /// If a client receives a `NotFound`, it should re-upload the blob.
+    ///
+    /// There should be sufficient buffer time between the lifecycle policy's
+    /// deletion threshold and this value. A few days buffer is recommended.
+    ///
+    /// Default: 0. Zero means never consider a blob expired.
+    #[serde(default, deserialize_with = "convert_duration_with_shellexpand")]
+    pub consider_expired_after_s: u32,
+
+    /// The maximum buffer size to retain for retryable upload errors.
+    /// Setting this to zero will disable upload buffering, meaning
+    /// upload failures will result in a complete abort and likely
+    /// client errors.
+    ///
+    /// Default: 5MB.
+    pub max_retry_buffer_per_request: Option<usize>,
+
+    /// Maximum number of concurrent block uploads per blob.
+    /// This affects the parallelism of block blob uploads.
+    ///
+    /// Default: 10.
+    pub max_concurrent_uploads: Option<usize>,
+
+    /// Allow unencrypted HTTP connections. Only use for local testing
+    /// with Azurite or other local emulators.
+    ///
+    /// Default: false
+    #[serde(default)]
+    pub insecure_allow_http: bool,
+
+    /// The Azure Storage endpoint suffix.
+    /// Examples: "core.windows.net", "core.chinacloudapi.cn"
+    ///
+    /// Default: "core.windows.net"
+    #[serde(default)]
+    pub endpoint_suffix: String,
+
+    /// Service version to use when making requests to Azure Storage.
+    /// Should match one of Azure Storage REST API versions.
+    ///
+    /// Default: Latest supported version
+    #[serde(default)]
+    pub api_version: Option<String>,
+
+    /// Optional connection string for Azure Storage account.
+    /// If provided, this will be used instead of `account_name` and `account_key`.
+    /// Format: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=..."
+    ///
+    /// Default: None
+    #[serde(default)]
+    pub connection_string: Option<String>,
 
     /// Disable http/2 connections and only use http/1.1. Default client
     /// configuration will have http/1.1 and http/2 enabled for connection

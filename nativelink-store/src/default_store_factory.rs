@@ -23,6 +23,7 @@ use nativelink_error::Error;
 use nativelink_util::health_utils::HealthRegistryBuilder;
 use nativelink_util::store_trait::{Store, StoreDriver};
 
+use crate::azure_blob_store::AzureBlobStore;
 use crate::completeness_checking_store::CompletenessCheckingStore;
 use crate::compression_store::CompressionStore;
 use crate::dedup_store::DedupStore;
@@ -50,6 +51,9 @@ pub fn store_factory<'a>(
     Box::pin(async move {
         let store: Arc<dyn StoreDriver> = match backend {
             StoreSpec::memory(spec) => MemoryStore::new(spec),
+            StoreSpec::experimental_azure_blob_store(spec) => {
+                AzureBlobStore::new(spec, SystemTime::now).await?
+            }
             StoreSpec::experimental_s3_store(spec) => S3Store::new(spec, SystemTime::now).await?,
             StoreSpec::redis_store(spec) => RedisStore::new(spec.clone())?,
             StoreSpec::verify(spec) => VerifyStore::new(
