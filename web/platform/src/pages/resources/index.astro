@@ -46,6 +46,18 @@ const pageTitle = "NativeLink Resources | Blog, Case Studies, Changelog";
 
     <LinearGradient text="Announcements" class="text-thin text-4xl self-start pl-8 md:pl-48 py-8"/>
 
+    <div class="text-sm flex justify-start w-full md:w-9/12 px-8 md:px-0">An awesome talk of one of TraceMachina's leading engineers Aaron Mondal</div>
+    <div class="flex justify-start w-full md:w-9/12 px-8 md:px-0 flex justify-center items-center pt-4 pb-12">
+      <div class="w-full max-w-4xl aspect-video">
+        <iframe
+          class="w-full h-full"
+          src="https://www.youtube.com/embed/uokjTev8myk?rel=0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>
+
     <div id="Card" class="relative w-screen px-8 md:px-0 md:w-9/12 flex gap-4 snap-x snap-mandatory overflow-x-auto pb-16 mb-6 ">
       {announcements
         .sort((a, b) => new Date(b.data.pubDate).getTime() - new Date(a.data.pubDate).getTime())

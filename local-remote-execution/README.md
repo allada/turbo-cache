@@ -1,5 +1,7 @@
 # Local Remote Execution
 
+[![Hermetic Toolchain Creation with Local Remote Execution (LRE) & Nix - Aaron Mondal, NativeLink](https://i.ytimg.com/vi/uokjTev8myk/hqdefault.jpg?sqp=-oaymwEbCKgBEF5IVfKriqkDDggBFQAAiEIYAXABwAEG\u0026rs=AOn4CLAhfUYVRAaK7RhLLZ0m_A-T1mYPAg)](https://www.youtube.com/embed/uokjTev8myk?rel=0)
+
 NativeLink's Local Remote Execution is a framework to build, distribute, and
 rapidly iterate on custom toolchain setups that are transparent, fully hermetic,
 and reproducible across machines of the same system architecture.
