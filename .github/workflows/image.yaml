@@ -21,7 +21,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [image, nativelink-worker-init, nativelink-worker-lre-cc]
+        image:
+          - image
+          - nativelink-worker-init
+          - nativelink-worker-lre-cc
+          - nativelink-worker-lre-rs
     name: Publish ${{ matrix.image }}
     runs-on: ubuntu-22.04
     permissions:
