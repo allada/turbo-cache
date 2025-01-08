@@ -355,7 +355,7 @@ impl LenEntry for FileEntryImpl {
         let result = self
             .get_file_path_locked(move |full_content_path| async move {
                 let full_content_path = full_content_path.clone();
-                spawn_blocking!("filesystem_touch_set_mtime", move || {
+                spawn_blocking!("filesystem_touch_set_atime", move || {
                     set_file_atime(&full_content_path, FileTime::now()).err_tip(|| {
                         format!("Failed to touch file in filesystem store {full_content_path:?}")
                     })
@@ -769,7 +769,7 @@ impl<Fe: FileEntry> FilesystemStore<Fe> {
                 // File -> File, it can cause a deadlock if the Write file is not sending
                 // data because it is waiting for a file descriotor to open before sending data.
                 resumeable_temp_file.close_file().await.err_tip(|| {
-                    "Could not close file due to timeout in FileSystemStore::update_file"
+                    "Could not close file due to timeout in FilesystemStore::update_file"
                 })?;
                 continue;
             };
@@ -1011,7 +1011,7 @@ impl<Fe: FileEntry> StoreDriver for FilesystemStore<Fe> {
             resumeable_temp_file
                 .as_reader()
                 .await
-                .err_tip(|| "In FileSystemStore::get_part()")?
+                .err_tip(|| "In FilesystemStore::get_part()")?
                 .read_buf(&mut buf)
                 .await
                 .err_tip(|| "Failed to read data in filesystem store")?;
@@ -1033,7 +1033,7 @@ impl<Fe: FileEntry> StoreDriver for FilesystemStore<Fe> {
                         resumeable_temp_file
                             .close_file()
                             .await
-                            .err_tip(|| "Could not close file due to timeout in FileSystemStore::get_part")?;
+                            .err_tip(|| "Could not close file due to timeout in FilesystemStore::get_part")?;
                         continue;
                     }
                     res = writer.send(buf_content.clone()) => {
