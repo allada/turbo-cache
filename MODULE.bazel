@@ -87,7 +87,7 @@ rust.toolchain(
 use_repo(rust, "rust_toolchains")
 
 bazel_dep(name = "protobuf", version = "29.0", repo_name = "com_google_protobuf")
-bazel_dep(name = "toolchains_protoc", version = "0.3.4")
+bazel_dep(name = "toolchains_protoc", version = "0.3.6")
 
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 protoc.toolchain(
