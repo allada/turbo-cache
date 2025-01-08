@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod ac_utils;
+pub mod azure_blob_store;
 pub mod cas_utils;
 pub mod completeness_checking_store;
 pub mod compression_store;
