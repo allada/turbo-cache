@@ -30,7 +30,7 @@ use nativelink_proto::build::bazel::remote::execution::v2::{
 use nativelink_proto::google::rpc::Status as GrpcStatus;
 use nativelink_service::cas_server::CasServer;
 use nativelink_store::ac_utils::serialize_and_upload_message;
-use nativelink_store::default_store_factory::store_factory;
+use nativelink_store::default_store_factory::make_and_add_store_to_manager;
 use nativelink_store::store_manager::StoreManager;
 use nativelink_util::common::DigestInfo;
 use nativelink_util::digest_hasher::DigestHasherFunc;
@@ -47,15 +47,14 @@ const BAD_HASH: &str = "BAD_HASH";
 
 async fn make_store_manager() -> Result<Arc<StoreManager>, Error> {
     let store_manager = Arc::new(StoreManager::new());
-    store_manager.add_store(
+    make_and_add_store_to_manager(
         "main_cas",
-        store_factory(
-            &StoreSpec::memory(MemorySpec::default()),
-            &store_manager,
-            None,
-        )
-        .await?,
-    );
+        &StoreSpec::memory(MemorySpec::default()),
+        &store_manager,
+        None,
+    )
+    .await?;
+
     Ok(store_manager)
 }
 

@@ -15,9 +15,10 @@
 use std::ptr::from_ref;
 use std::sync::Arc;
 
-use nativelink_config::stores::{MemorySpec, RefSpec};
+use nativelink_config::stores::{MemorySpec, RefSpec, StoreSpec};
 use nativelink_error::Error;
 use nativelink_macro::nativelink_test;
+use nativelink_store::default_store_factory::make_and_add_store_to_manager;
 use nativelink_store::memory_store::MemoryStore;
 use nativelink_store::ref_store::RefStore;
 use nativelink_store::store_manager::StoreManager;
@@ -27,19 +28,24 @@ use pretty_assertions::assert_eq;
 
 const VALID_HASH1: &str = "0123456789abcdef000000000000000000010000000000000123456789abcdef";
 
-fn setup_stores() -> (Arc<StoreManager>, Store, Store) {
+async fn setup_stores() -> (Arc<StoreManager>, Store, Store) {
     let store_manager = Arc::new(StoreManager::new());
 
-    let memory_store = Store::new(MemoryStore::new(&MemorySpec::default()));
-    store_manager.add_store("foo", memory_store.clone());
+    let memory_store_spec = StoreSpec::memory(MemorySpec::default());
 
-    let ref_store = Store::new(RefStore::new(
-        &RefSpec {
-            name: "foo".to_string(),
-        },
-        Arc::downgrade(&store_manager),
-    ));
-    store_manager.add_store("bar", ref_store.clone());
+    make_and_add_store_to_manager("foo", &memory_store_spec, &store_manager, None)
+        .await
+        .unwrap();
+
+    let ref_store_spec = StoreSpec::ref_store(RefSpec { name: "foo".into() });
+
+    make_and_add_store_to_manager("bar", &ref_store_spec, &store_manager, None)
+        .await
+        .unwrap();
+
+    let memory_store = store_manager.get_store("foo").unwrap();
+    let ref_store = store_manager.get_store("bar").unwrap();
+
     (store_manager, memory_store, ref_store)
 }
 
@@ -47,7 +53,7 @@ fn setup_stores() -> (Arc<StoreManager>, Store, Store) {
 async fn has_test() -> Result<(), Error> {
     const VALUE1: &str = "13";
 
-    let (_store_manager, memory_store, ref_store) = setup_stores();
+    let (_store_manager, memory_store, ref_store) = setup_stores().await;
 
     {
         // Insert data into memory store.
@@ -77,7 +83,7 @@ async fn has_test() -> Result<(), Error> {
 async fn get_test() -> Result<(), Error> {
     const VALUE1: &str = "13";
 
-    let (_store_manager, memory_store, ref_store) = setup_stores();
+    let (_store_manager, memory_store, ref_store) = setup_stores().await;
 
     {
         // Insert data into memory store.
@@ -108,7 +114,7 @@ async fn get_test() -> Result<(), Error> {
 async fn update_test() -> Result<(), Error> {
     const VALUE1: &str = "13";
 
-    let (_store_manager, memory_store, ref_store) = setup_stores();
+    let (_store_manager, memory_store, ref_store) = setup_stores().await;
 
     {
         // Insert data into ref_store.
@@ -140,7 +146,7 @@ async fn inner_store_test() -> Result<(), Error> {
     let store_manager = Arc::new(StoreManager::new());
 
     let memory_store = Store::new(MemoryStore::new(&MemorySpec::default()));
-    store_manager.add_store("mem_store", memory_store.clone());
+    store_manager.add_store("mem_store", memory_store.clone())?;
 
     let ref_store_inner = Store::new(RefStore::new(
         &RefSpec {
@@ -148,7 +154,7 @@ async fn inner_store_test() -> Result<(), Error> {
         },
         Arc::downgrade(&store_manager),
     ));
-    store_manager.add_store("ref_store_inner", ref_store_inner.clone());
+    store_manager.add_store("ref_store_inner", ref_store_inner.clone())?;
 
     let ref_store_outer = Store::new(RefStore::new(
         &RefSpec {
@@ -156,7 +162,7 @@ async fn inner_store_test() -> Result<(), Error> {
         },
         Arc::downgrade(&store_manager),
     ));
-    store_manager.add_store("ref_store_outer", ref_store_outer.clone());
+    store_manager.add_store("ref_store_outer", ref_store_outer.clone())?;
 
     // Ensure the result of inner_store() points to exact same memory store.
     assert_eq!(

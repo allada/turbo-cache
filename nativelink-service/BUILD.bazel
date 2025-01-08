@@ -52,6 +52,7 @@ rust_test_suite(
         "tests/bep_server_test.rs",
         "tests/bytestream_server_test.rs",
         "tests/cas_server_test.rs",
+        "tests/store_overlap_rules_test.rs",
         "tests/worker_api_server_test.rs",
     ],
     proc_macro_deps = [

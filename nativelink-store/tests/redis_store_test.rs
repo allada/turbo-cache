@@ -883,7 +883,7 @@ async fn test_redis_fingerprint_metric() -> Result<(), Error> {
             ))
         };
 
-        store_manager.add_store("redis_store", store);
+        store_manager.add_store("redis_store", store).unwrap();
     };
 
     let root_metrics = Arc::new(RwLock::new(RootMetricsTest {

@@ -25,7 +25,7 @@ use nativelink_proto::build::bazel::remote::execution::v2::{
     digest_function, ActionResult, Digest, GetActionResultRequest, UpdateActionResultRequest,
 };
 use nativelink_service::ac_server::AcServer;
-use nativelink_store::default_store_factory::store_factory;
+use nativelink_store::default_store_factory::make_and_add_store_to_manager;
 use nativelink_store::store_manager::StoreManager;
 use nativelink_util::common::DigestInfo;
 use nativelink_util::store_trait::StoreLike;
@@ -48,29 +48,28 @@ async fn insert_into_store<T: Message>(
     let data_len = store_data.len();
     let digest = DigestInfo::try_new(hash, action_size)?;
     store.update_oneshot(digest, store_data.freeze()).await?;
+
     Ok(data_len.try_into().unwrap())
 }
 
 async fn make_store_manager() -> Result<Arc<StoreManager>, Error> {
     let store_manager = Arc::new(StoreManager::new());
-    store_manager.add_store(
+    make_and_add_store_to_manager(
         "main_cas",
-        store_factory(
-            &StoreSpec::memory(MemorySpec::default()),
-            &store_manager,
-            None,
-        )
-        .await?,
-    );
-    store_manager.add_store(
+        &StoreSpec::memory(MemorySpec::default()),
+        &store_manager,
+        None,
+    )
+    .await?;
+
+    make_and_add_store_to_manager(
         "main_ac",
-        store_factory(
-            &StoreSpec::memory(MemorySpec::default()),
-            &store_manager,
-            None,
-        )
-        .await?,
-    );
+        &StoreSpec::memory(MemorySpec::default()),
+        &store_manager,
+        None,
+    )
+    .await?;
+
     Ok(store_manager)
 }
 

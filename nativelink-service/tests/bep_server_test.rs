@@ -35,7 +35,7 @@ use nativelink_proto::google::devtools::build::v1::{
     PublishBuildToolEventStreamRequest, PublishLifecycleEventRequest, StreamId,
 };
 use nativelink_service::bep_server::BepServer;
-use nativelink_store::default_store_factory::store_factory;
+use nativelink_store::default_store_factory::make_and_add_store_to_manager;
 use nativelink_store::store_manager::StoreManager;
 use nativelink_util::buf_channel::make_buf_channel_pair;
 use nativelink_util::channel_body_for_tests::ChannelBody;
@@ -52,15 +52,14 @@ const BEP_STORE_NAME: &str = "main_bep";
 /// Utility function to construct a [`StoreManager`]
 async fn make_store_manager() -> Result<Arc<StoreManager>, Error> {
     let store_manager = Arc::new(StoreManager::new());
-    store_manager.add_store(
+    make_and_add_store_to_manager(
         BEP_STORE_NAME,
-        store_factory(
-            &StoreSpec::memory(MemorySpec::default()),
-            &store_manager,
-            None,
-        )
-        .await?,
-    );
+        &StoreSpec::memory(MemorySpec::default()),
+        &store_manager,
+        None,
+    )
+    .await?;
+
     Ok(store_manager)
 }
 

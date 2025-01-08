@@ -34,7 +34,7 @@ use nativelink_proto::google::bytestream::{
     QueryWriteStatusRequest, QueryWriteStatusResponse, ReadRequest, WriteRequest, WriteResponse,
 };
 use nativelink_service::bytestream_server::ByteStreamServer;
-use nativelink_store::default_store_factory::store_factory;
+use nativelink_store::default_store_factory::make_and_add_store_to_manager;
 use nativelink_store::store_manager::StoreManager;
 use nativelink_util::channel_body_for_tests::ChannelBody;
 use nativelink_util::common::{encode_stream_proto, DigestInfo};
@@ -58,15 +58,14 @@ const HASH1: &str = "0123456789abcdef000000000000000000000000000000000123456789a
 
 async fn make_store_manager() -> Result<Arc<StoreManager>, Error> {
     let store_manager = Arc::new(StoreManager::new());
-    store_manager.add_store(
+    make_and_add_store_to_manager(
         "main_cas",
-        store_factory(
-            &StoreSpec::memory(MemorySpec::default()),
-            &store_manager,
-            None,
-        )
-        .await?,
-    );
+        &StoreSpec::memory(MemorySpec::default()),
+        &store_manager,
+        None,
+    )
+    .await?;
+
     Ok(store_manager)
 }
 
