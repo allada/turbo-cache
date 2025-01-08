@@ -57,6 +57,8 @@ tokio-util = { version = "0.7.13" }
 tonic = { version = "0.12.3", features = ["transport", "tls"], default-features = false }
 tracing = { version = "0.1.41", default-features = false }
 uuid = { version = "1.11.0", default-features = false, features = ["v4", "serde"] }
+googleapis-tonic-google-storage-v2 = "0.16.0"
+crc32c = "0.6.8"
 
 [dev-dependencies]
 nativelink-macro = { path = "../nativelink-macro" }

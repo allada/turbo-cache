@@ -1325,6 +1325,55 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
+name = "googleapis-tonic-google-api"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0fac8a714a790dacdbc09fd423079b9cfc85a754b225c6c4ece22ad4f277346"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tonic",
+]
+
+[[package]]
+name = "googleapis-tonic-google-iam-v1"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa2de38058bcf2fcb512a441dd5f8ae0c5893475eb3cc4c9f2178ca3856451a6"
+dependencies = [
+ "googleapis-tonic-google-api",
+ "googleapis-tonic-google-type",
+ "prost",
+ "prost-types",
+ "tonic",
+]
+
+[[package]]
+name = "googleapis-tonic-google-storage-v2"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e93e7cde66413a2bcedf7c5aa9c1ea36a17d3bccaa680cc931434db295f1769"
+dependencies = [
+ "googleapis-tonic-google-api",
+ "googleapis-tonic-google-iam-v1",
+ "googleapis-tonic-google-type",
+ "prost",
+ "prost-types",
+ "tonic",
+]
+
+[[package]]
+name = "googleapis-tonic-google-type"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ba7a85cbf34af971cfcc2d15bc7de8935f33b7a675def0e520e567b64ce8c7f"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tonic",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2173,9 +2222,11 @@ dependencies = [
  "bytes",
  "bytes-utils",
  "const_format",
+ "crc32c",
  "filetime",
  "fred",
  "futures",
+ "googleapis-tonic-google-storage-v2",
  "hex",
  "http 1.2.0",
  "http-body 1.0.1",

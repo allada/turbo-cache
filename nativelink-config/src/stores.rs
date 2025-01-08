@@ -54,6 +54,9 @@ pub enum StoreSpec {
     ///
     memory(MemorySpec),
 
+    /// TODO(asr2003): Add documentation.
+    experimental_gcs_store(GCSSpec),
+
     /// S3 store will use Amazon's S3 service as a backend to store
     /// the files. This configuration can be used to share files
     /// across multiple instances.
@@ -722,6 +725,61 @@ pub struct EvictionPolicy {
     /// Default: 0. Zero means never evict based on count.
     #[serde(default, deserialize_with = "convert_numeric_with_shellexpand")]
     pub max_count: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct GCSSpec {
+    /// GCS region or location. Example: US, US-CENTRAL1, EUROPE-WEST1.
+    #[serde(default, deserialize_with = "convert_string_with_shellexpand")]
+    pub location: String,
+
+    /// Bucket name to use as the backend.
+    #[serde(default, deserialize_with = "convert_string_with_shellexpand")]
+    pub bucket: String,
+
+    /// Optional prefix for object keys. If None, no prefix will be used.
+    #[serde(default)]
+    pub key_prefix: Option<String>,
+
+    /// Retry configuration to use when a network request fails.
+    #[serde(default)]
+    pub retry: Retry,
+
+    /// Time in seconds after which an object is considered "expired."
+    /// Allows external tools to clean up unused objects.
+    /// Default: 0. Zero means never consider an object expired.
+    #[serde(default, deserialize_with = "convert_duration_with_shellexpand")]
+    pub consider_expired_after_s: u32,
+
+    /// Maximum buffer size to retain in case of a retryable error during upload.
+    /// Setting this to zero will disable upload buffering.
+    /// Default: 5MB.
+    pub max_retry_buffer_per_request: Option<usize>,
+
+    /// Enable resumable uploads for large objects.
+    /// Default: true.
+    #[serde(default)]
+    pub enable_resumable_uploads: bool,
+
+    /// The maximum size of chunks (in bytes) for resumable uploads.
+    /// Default: 8MB.
+    pub resumable_chunk_size: Option<usize>,
+
+    /// Allow unencrypted HTTP connections. Only use this for local testing.
+    /// Default: false
+    #[serde(default)]
+    pub insecure_allow_http: bool,
+
+    /// Disable http/2 connections and only use http/1.1.
+    /// Default: false
+    #[serde(default)]
+    pub disable_http2: bool,
+
+    /// Optional configuration for client authentication.
+    /// Example: Path to a service account JSON key file or environment-based authentication.
+    #[serde(default)]
+    pub auth_key_file: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
