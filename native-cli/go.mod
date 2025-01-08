@@ -2,7 +2,7 @@ module github.com/TraceMachina/nativelink/native-cli
 
 go 1.23.1
 
-toolchain go1.23.3
+toolchain go1.23.4
 
 require (
 	github.com/docker/docker v27.4.0+incompatible
