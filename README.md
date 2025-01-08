@@ -123,6 +123,64 @@ nix run github:TraceMachina/nativelink ./basic_cas.json5
 
 See the [contribution docs](https://nativelink.com/docs/contribute/nix) for further information.
 
+### Azure Blob Storage Configuration
+
+To configure the Azure Blob Storage (Azure Store) for NativeLink, follow these steps:
+
+1. **Add Azure Store Configuration**:
+   - Update your configuration file (e.g., `basic_cas.json5`) to include the Azure store configuration. Here is an example configuration:
+
+   ```json
+   {
+     "stores": {
+       "AZURE_STORE": {
+         "azure_store": {
+           "account_name": "your_account_name",
+           "account_key": "your_account_key",
+           "container_name": "your_container_name",
+           "key_prefix": "your_key_prefix",
+           "max_retry_buffer_per_request": 5242880
+         }
+       }
+     }
+   }
+   ```
+
+2. **Set Environment Variables**:
+   - Ensure that the necessary credentials are set as environment variables or stored securely in a configuration file. For example:
+
+   ```bash
+   export AZURE_STORAGE_ACCOUNT="your_account_name"
+   export AZURE_STORAGE_KEY="your_account_key"
+   ```
+
+3. **Run NativeLink with Azure Store**:
+   - Start NativeLink with the updated configuration file that includes the Azure store configuration.
+
+   ```bash
+   docker run \
+       -v $(pwd)/basic_cas.json5:/config \
+       -p 50051:50051 \
+       ghcr.io/tracemachina/nativelink:v0.5.3 \
+       config
+   ```
+
+### Supported Blob Types
+
+The Azure store in NativeLink supports the following types of blobs:
+
+1. **Block Blobs**:
+   - Used for storing text and binary data, such as documents and media files.
+   - Supports large file uploads using chunked uploads with `put_block` and `put_block_list` methods.
+
+2. **Append Blobs**:
+   - Optimized for append operations, making them suitable for logging scenarios.
+   - Data can only be appended to an existing blob, not modified or deleted.
+
+3. **Page Blobs**:
+   - Designed for random read/write operations.
+   - Used for scenarios like virtual hard disk (VHD) files for Azure virtual machines.
+
 ## ✍️ Contributors
 
 <a href="https://github.com/tracemachina/nativelink/graphs/contributors" aria-label="View contributors of the NativeLink project on GitHub">

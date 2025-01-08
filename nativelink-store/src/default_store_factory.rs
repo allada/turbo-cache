@@ -39,6 +39,7 @@ use crate::shard_store::ShardStore;
 use crate::size_partitioning_store::SizePartitioningStore;
 use crate::store_manager::StoreManager;
 use crate::verify_store::VerifyStore;
+use crate::azure_store::AzureStore;
 
 type FutureMaybeStore<'a> = Box<dyn Future<Output = Result<Store, Error>> + 'a>;
 
@@ -97,6 +98,7 @@ pub fn store_factory<'a>(
                     .await?;
                 ShardStore::new(spec, stores)?
             }
+            StoreSpec::azure_store(spec) => AzureStore::new(spec).await?,
         };
 
         if let Some(health_registry_builder) = maybe_health_registry_builder {
