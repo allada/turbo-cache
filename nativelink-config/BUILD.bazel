@@ -41,6 +41,7 @@ rust_test_suite(
         "@crates//:pretty_assertions",
         "@crates//:serde",
         "@crates//:serde_json5",
+        "@crates//:serde_test",
     ],
 )
 
